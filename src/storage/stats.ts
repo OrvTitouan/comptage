@@ -21,6 +21,22 @@ export async function clearResults(): Promise<void> {
   await AsyncStorage.removeItem(STORAGE_KEY);
 }
 
+export async function deleteResult(id: string): Promise<void> {
+  const results = await loadResults();
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(results.filter((r) => r.id !== id)));
+}
+
+export async function importResults(incoming: GameResult[]): Promise<GameResult[]> {
+  const existing = await loadResults();
+  const existingIds = new Set(existing.map((r) => r.id));
+  const newOnes = incoming.filter((r) => !existingIds.has(r.id));
+  const merged = [...newOnes, ...existing].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+  return merged;
+}
+
 // --- Calculs de statistiques ---
 
 export interface PlayerStats {

@@ -1,4 +1,4 @@
-export type GameId = 'flip7' | 'papayoo' | 'skulking';
+export type GameId = 'flip7' | 'papayoo' | 'skulking' | 'farway';
 
 export interface Game {
   id: GameId;
@@ -14,6 +14,12 @@ export interface Game {
 export interface Profile {
   id: string;
   name: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  memberIds: string[];
 }
 
 export interface Player {
@@ -97,4 +103,5 @@ export type Screen =
   | 'Stats'
   | { name: 'PlayerSetup'; game: Game }
   | { name: 'PapayooGame'; game: Game; players: Player[]; totalRounds: number }
-  | { name: 'Flip7Game'; players: Player[] };
+  | { name: 'Flip7Game'; players: Player[] }
+  | { name: 'FarwayGame'; players: Player[] };

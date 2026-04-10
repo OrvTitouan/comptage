@@ -219,16 +219,17 @@ export default function Flip7RoundScreen({ roundNumber, players, onValidate, onB
             {/* Cartes bonus */}
             <Text style={styles.sectionLabel}>Cartes bonus</Text>
 
-            {/* x2 */}
-            <TouchableOpacity
-              style={[styles.bonusCard, s.hasX2 && styles.bonusCardSelected]}
-              onPress={() => update({ hasX2: !s.hasX2 })}
-            >
-              <Text style={[styles.bonusCardLabel, s.hasX2 && styles.bonusCardLabelSelected]}>×2</Text>
-              <Text style={styles.bonusCardSub}>Double les numéros</Text>
-            </TouchableOpacity>
-
             <View style={styles.bonusGrid}>
+              {/* x2 */}
+              <TouchableOpacity
+                style={[styles.bonusCard, styles.bonusCardX2Base, s.hasX2 && styles.bonusCardX2Selected]}
+                onPress={() => update({ hasX2: !s.hasX2 })}
+              >
+                <Text style={[styles.bonusCardLabel, s.hasX2 && styles.bonusCardLabelX2Selected]}>×2</Text>
+                <Text style={styles.bonusCardSub}>Double</Text>
+              </TouchableOpacity>
+
+              {/* +2 +4 +6 +8 +10 */}
               {BONUS_CARDS.map((b) => {
                 const selected = s.selectedBonuses.has(b);
                 return (
@@ -240,7 +241,7 @@ export default function Flip7RoundScreen({ roundNumber, players, onValidate, onB
                     <Text style={[styles.bonusCardLabel, selected && styles.bonusCardLabelSelected]}>
                       +{b}
                     </Text>
-                    <Text style={styles.bonusCardSub}>pts bonus</Text>
+                    <Text style={styles.bonusCardSub}>pts</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -329,10 +330,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 8,
   },
   bonusCard: {
-    flex: 1, minWidth: 70, alignItems: 'center', justifyContent: 'center',
+    width: '30.5%', alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12,
-    paddingVertical: 14, paddingHorizontal: 8,
+    paddingVertical: 12, paddingHorizontal: 4,
     borderWidth: 2, borderColor: 'transparent',
+  },
+  bonusCardX2Base: {
+    backgroundColor: 'rgba(155,89,182,0.15)', borderColor: 'rgba(155,89,182,0.3)',
+  },
+  bonusCardX2Selected: {
+    backgroundColor: 'rgba(155,89,182,0.3)', borderColor: '#9b59b6',
   },
   bonusCardSelected: {
     backgroundColor: 'rgba(243,156,18,0.2)', borderColor: '#f39c12',
@@ -341,6 +348,7 @@ const styles = StyleSheet.create({
     fontSize: 20, fontWeight: '900', color: 'rgba(255,255,255,0.4)',
   },
   bonusCardLabelSelected: { color: '#f39c12' },
+  bonusCardLabelX2Selected: { color: '#9b59b6' },
   bonusCardSub: { fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 },
   footer: { padding: 16, paddingBottom: 28 },
   validateBtn: {

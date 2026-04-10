@@ -31,4 +31,14 @@ export const GAMES: Game[] = [
     minPlayers: 2,
     maxPlayers: 6,
   },
+  {
+    id: 'farway',
+    name: 'Farway',
+    description: 'Explorez des régions et trouvez des sanctuaires !',
+    icon: 'map-search-outline',
+    color: '#27ae60',
+    accentColor: '#1e8449',
+    minPlayers: 2,
+    maxPlayers: 5,
+  },
 ];

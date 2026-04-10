@@ -6,13 +6,14 @@ import StatsScreen from './src/screens/StatsScreen';
 import PlayerSetupScreen from './src/screens/PlayerSetupScreen';
 import PapayooGameScreen from './src/screens/papayoo/PapayooGameScreen';
 import Flip7GameScreen from './src/screens/flip7/Flip7GameScreen';
+import FarwayGameScreen from './src/screens/farway/FarwayGameScreen';
 import { Game, Player, Screen } from './src/types';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('Home');
 
   const handleSelectGame = (game: Game) => {
-    if (game.id === 'papayoo' || game.id === 'flip7') {
+    if (game.id === 'papayoo' || game.id === 'flip7' || game.id === 'farway') {
       setScreen({ name: 'PlayerSetup', game });
     } else {
       Alert.alert(game.name, 'Ce jeu arrive bientôt !', [{ text: 'OK' }]);
@@ -45,6 +46,8 @@ export default function App() {
           onStart={(players: Player[], totalRounds: number) => {
             if (game.id === 'flip7') {
               setScreen({ name: 'Flip7Game', players });
+            } else if (game.id === 'farway') {
+              setScreen({ name: 'FarwayGame', players });
             } else {
               setScreen({ name: 'PapayooGame', game, players, totalRounds });
             }
@@ -70,6 +73,17 @@ export default function App() {
     return (
       <View style={styles.root}>
         <Flip7GameScreen
+          players={screen.players}
+          onEnd={() => setScreen('Home')}
+        />
+      </View>
+    );
+  }
+
+  if (typeof screen === 'object' && screen.name === 'FarwayGame') {
+    return (
+      <View style={styles.root}>
+        <FarwayGameScreen
           players={screen.players}
           onEnd={() => setScreen('Home')}
         />
