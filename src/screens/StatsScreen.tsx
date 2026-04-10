@@ -29,14 +29,14 @@ type StatsView = 'selectGroup' | 'stats';
 const GAME_COLORS: Record<GameId, string> = {
   flip7: '#e74c3c',
   papayoo: '#f39c12',
-  skulking: '#8e44ad',
+  'skull-king': '#2980b9',
   farway: '#27ae60',
 };
 
 const GAME_ICONS: Record<GameId, string> = {
   flip7: 'cards-playing-outline',
-  papayoo: 'dice-multiple',
-  skulking: 'skull',
+  papayoo: 'cards-playing',
+  'skull-king': 'skull-crossbones',
   farway: 'map-search-outline',
 };
 
@@ -85,13 +85,19 @@ export default function StatsScreen({ onBack }: StatsScreenProps) {
   // ── Actions ──────────────────────────────────────────────────
 
   const handleDelete = (result: GameResult) => {
-    Alert.alert('Supprimer cette partie ?', `${result.gameName} du ${formatDate(result.date)}`, [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer', style: 'destructive',
-        onPress: async () => { await deleteResult(result.id); await reload(); },
-      },
-    ]);
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Supprimer cette partie ?\n${result.gameName} du ${formatDate(result.date)}`)) {
+        deleteResult(result.id).then(reload);
+      }
+    } else {
+      Alert.alert('Supprimer cette partie ?', `${result.gameName} du ${formatDate(result.date)}`, [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer', style: 'destructive',
+          onPress: async () => { await deleteResult(result.id); await reload(); },
+        },
+      ]);
+    }
   };
 
   const handleExport = async () => {

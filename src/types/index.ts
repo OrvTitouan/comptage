@@ -1,4 +1,4 @@
-export type GameId = 'flip7' | 'papayoo' | 'skulking' | 'farway';
+export type GameId = 'flip7' | 'papayoo' | 'farway' | 'skull-king';
 
 export interface Game {
   id: GameId;
@@ -80,6 +80,39 @@ export function calcFlip7Score(s: Flip7RoundScore): number {
 
 export const FLIP7_WIN_SCORE = 200;
 
+// Skull King
+export interface SkullKingRoundScore {
+  playerId: string;
+  bid: number;          // pari (0..roundNumber)
+  tricks: number;       // plis réalisés (0..roundNumber)
+  piratesCaptured: number;           // Pirates capturés par Skull King (+30 par pirate si pari réussi)
+  mermaidCapturedSkullKing: boolean; // Sirène a capturé Skull King (+50 si pari réussi)
+  colored14s: number;                // Cartes 14 couleur (vert/violet/jaune) dans les plis remportés (+10 chacune si pari réussi)
+  black14: boolean;                  // Carte 14 noire (atout) dans les plis remportés (+20 si pari réussi)
+}
+
+export interface SkullKingRound {
+  roundNumber: number;
+  scores: SkullKingRoundScore[];
+}
+
+export function calcSkullKingRoundScore(score: SkullKingRoundScore, roundNumber: number): number {
+  const { bid, tricks, piratesCaptured, mermaidCapturedSkullKing, colored14s, black14 } = score;
+  if (bid === 0) {
+    return tricks === 0 ? roundNumber * 10 : -(roundNumber * 10);
+  }
+  if (bid === tricks) {
+    return (
+      bid * 20 +
+      piratesCaptured * 30 +
+      (mermaidCapturedSkullKing ? 50 : 0) +
+      colored14s * 10 +
+      (black14 ? 20 : 0)
+    );
+  }
+  return -Math.abs(bid - tricks) * 10;
+}
+
 // Statistiques
 export interface PlayerResult {
   playerId: string;
@@ -104,4 +137,5 @@ export type Screen =
   | { name: 'PlayerSetup'; game: Game }
   | { name: 'PapayooGame'; game: Game; players: Player[]; totalRounds: number }
   | { name: 'Flip7Game'; players: Player[] }
-  | { name: 'FarwayGame'; players: Player[] };
+  | { name: 'FarwayGame'; players: Player[] }
+  | { name: 'SkullKingGame'; players: Player[] };
