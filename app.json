@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Comptage Jeux",
+    "slug": "comptage-jeux",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.comptage.jeux",
+      "versionCode": 1
+    },
+    "scheme": "comptage-jeux"
+  }
+}
