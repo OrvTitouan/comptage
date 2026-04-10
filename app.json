@@ -9,6 +9,11 @@
       "package": "com.comptage.jeux",
       "versionCode": 1
     },
-    "scheme": "comptage-jeux"
+    "scheme": "comptage-jeux",
+    "extra": {
+      "eas": {
+        "projectId": "c2d4f71c-678a-404a-bffa-a6ca7354b3f8"
+      }
+    }
   }
 }
