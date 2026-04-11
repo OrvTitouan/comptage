@@ -11,6 +11,7 @@ import SkullKingGameScreen from './src/screens/skullking/SkullKingGameScreen';
 import TarotGameScreen from './src/screens/tarot/TarotGameScreen';
 import SevenWondersGameScreen from './src/screens/sevenwonders/SevenWondersGameScreen';
 import SkyjoGameScreen from './src/screens/skyjo/SkyjoGameScreen';
+import CatanGameScreen from './src/screens/catan/CatanGameScreen';
 import { Game, Player, GameId, ActiveGameState, GameScreenType, PlayerScore, GameResult } from './src/types';
 import { GAMES } from './src/constants/games';
 import { saveResult } from './src/storage/stats';
@@ -145,6 +146,7 @@ export default function App() {
       tarot: 'TarotGame',
       '7wonders': 'SevenWondersGame',
       'skyjo': 'SkyjoGame',
+      'catan': 'CatanGame',
     };
     const newGame: ActiveGameState = {
       id,
@@ -189,6 +191,9 @@ export default function App() {
     }
     if (screenType === 'SkyjoGame') {
       return <SkyjoGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
+    if (screenType === 'CatanGame') {
+      return <CatanGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
     }
     return null;
   };

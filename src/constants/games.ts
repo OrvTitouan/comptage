@@ -68,6 +68,17 @@ export const GAMES: Game[] = [
     maxPlayers: 8,
   },
   {
+    id: 'catan',
+    name: 'Catan',
+    description: 'Bâtissez, commercez et atteignez 10 points de victoire !',
+    icon: 'hexagon-multiple',
+    image: require('../../image/catan.png'),
+    color: '#e67e22',
+    accentColor: '#ca6f1e',
+    minPlayers: 3,
+    maxPlayers: 4,
+  },
+  {
     id: '7wonders',
     name: '7 Wonders',
     description: 'Bâtissez la civilisation la plus rayonnante de l\'Antiquité !',

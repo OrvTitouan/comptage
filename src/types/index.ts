@@ -1,4 +1,4 @@
-export type GameId = 'flip7' | 'papayoo' | 'farway' | 'skull-king' | 'tarot' | '7wonders' | 'skyjo';
+export type GameId = 'flip7' | 'papayoo' | 'farway' | 'skull-king' | 'tarot' | '7wonders' | 'skyjo' | 'catan';
 
 export interface Game {
   id: GameId;
@@ -224,7 +224,7 @@ export interface PlayerScore {
   score: number;
 }
 
-export type GameScreenType = 'PapayooGame' | 'Flip7Game' | 'FarwayGame' | 'SkullKingGame' | 'TarotGame' | 'SevenWondersGame' | 'SkyjoGame';
+export type GameScreenType = 'PapayooGame' | 'Flip7Game' | 'FarwayGame' | 'SkullKingGame' | 'TarotGame' | 'SevenWondersGame' | 'SkyjoGame' | 'CatanGame';
 
 export interface ActiveGameState {
   id: string;

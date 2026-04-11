@@ -15,6 +15,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Profile, Group } from '../types';
 import { loadProfiles, addProfile, deleteProfile } from '../storage/profiles';
 import { loadGroups, saveGroup, deleteGroup } from '../storage/groups';
+import { loadResults, computeStats, PlayerStats } from '../storage/stats';
+import { GAMES } from '../constants/games';
 
 interface ProfilesScreenProps {
   onBack: () => void;
@@ -33,6 +35,10 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
   const [name, setName] = useState('');
   const [showForm, setShowForm] = useState(false);
 
+  // Modal stats joueur
+  const [statsProfile, setStatsProfile] = useState<Profile | null>(null);
+  const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
+
   // Modal groupe
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
@@ -45,6 +51,28 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
   };
 
   useEffect(() => { reload(); }, []);
+
+  // ── Stats joueur ─────────────────────────────────────────────
+
+  const openPlayerStats = async (profile: Profile) => {
+    setStatsProfile(profile);
+    const results = await loadResults();
+    const allStats = computeStats(results);
+    const found = allStats.find((s) => s.playerId === profile.id) ?? {
+      playerId: profile.id,
+      playerName: profile.name,
+      gamesPlayed: 0,
+      wins: 0,
+      winsByGame: {},
+      gamesByGame: {},
+    };
+    setPlayerStats(found);
+  };
+
+  const closeStats = () => {
+    setStatsProfile(null);
+    setPlayerStats(null);
+  };
 
   // ── Profils ──────────────────────────────────────────────────
 
@@ -72,33 +100,17 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
   // ── Groupes ──────────────────────────────────────────────────
 
   const openCreateGroup = () => {
-    setEditingGroup(null);
-    setGroupName('');
-    setGroupMemberIds(new Set());
-    setShowGroupModal(true);
+    setEditingGroup(null); setGroupName(''); setGroupMemberIds(new Set()); setShowGroupModal(true);
   };
 
   const openEditGroup = (group: Group) => {
-    setEditingGroup(group);
-    setGroupName(group.name);
-    setGroupMemberIds(new Set(group.memberIds));
-    setShowGroupModal(true);
+    setEditingGroup(group); setGroupName(group.name); setGroupMemberIds(new Set(group.memberIds)); setShowGroupModal(true);
   };
 
   const handleSaveGroup = async () => {
-    if (!groupName.trim()) {
-      Alert.alert('Nom requis', 'Donnez un nom à ce groupe.');
-      return;
-    }
-    if (groupMemberIds.size < 2) {
-      Alert.alert('Membres insuffisants', 'Un groupe doit avoir au moins 2 membres.');
-      return;
-    }
-    await saveGroup({
-      id: editingGroup?.id ?? Date.now().toString(),
-      name: groupName.trim(),
-      memberIds: Array.from(groupMemberIds),
-    });
+    if (!groupName.trim()) { Alert.alert('Nom requis', 'Donnez un nom à ce groupe.'); return; }
+    if (groupMemberIds.size < 2) { Alert.alert('Membres insuffisants', 'Un groupe doit avoir au moins 2 membres.'); return; }
+    await saveGroup({ id: editingGroup?.id ?? Date.now().toString(), name: groupName.trim(), memberIds: Array.from(groupMemberIds) });
     setShowGroupModal(false);
     reload();
   };
@@ -106,22 +118,21 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
   const handleDeleteGroup = (group: Group) => {
     Alert.alert('Supprimer ce groupe ?', group.name, [
       { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer', style: 'destructive',
-        onPress: async () => { await deleteGroup(group.id); reload(); },
-      },
+      { text: 'Supprimer', style: 'destructive', onPress: async () => { await deleteGroup(group.id); reload(); } },
     ]);
   };
 
   const toggleMember = (id: string) => {
-    setGroupMemberIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+    setGroupMemberIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   };
 
   // ── Render ───────────────────────────────────────────────────
+
+  const winRate = playerStats && playerStats.gamesPlayed > 0
+    ? Math.round((playerStats.wins / playerStats.gamesPlayed) * 100)
+    : 0;
+
+  const playedGames = GAMES.filter((g) => (playerStats?.gamesByGame[g.id] ?? 0) > 0);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -184,17 +195,28 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
             </View>
           ) : (
             profiles.map((profile) => (
-              <View key={profile.id} style={styles.profileCard}>
+              <TouchableOpacity
+                key={profile.id}
+                style={styles.profileCard}
+                onPress={() => openPlayerStats(profile)}
+                activeOpacity={0.8}
+              >
                 <View style={styles.profileAvatar}>
-                  <Text style={styles.profileInitials}>
-                    {profile.name.slice(0, 2).toUpperCase()}
-                  </Text>
+                  <Text style={styles.profileInitials}>{profile.name.slice(0, 2).toUpperCase()}</Text>
                 </View>
-                <Text style={styles.profileName}>{profile.name}</Text>
-                <TouchableOpacity onPress={() => handleDelete(profile)} style={styles.deleteButton}>
-                  <MaterialCommunityIcons name="trash-can-outline" size={20} color="rgba(255,255,255,0.4)" />
+                <View style={styles.profileInfo}>
+                  <Text style={styles.profileName}>{profile.name}</Text>
+                  <Text style={styles.profileHint}>Appuyer pour voir les stats</Text>
+                </View>
+                <MaterialCommunityIcons name="chart-bar" size={18} color="rgba(255,255,255,0.25)" style={{ marginRight: 4 }} />
+                <TouchableOpacity
+                  onPress={() => handleDelete(profile)}
+                  style={styles.deleteButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <MaterialCommunityIcons name="trash-can-outline" size={20} color="rgba(255,255,255,0.3)" />
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </ScrollView>
@@ -215,7 +237,6 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
               const members = profiles.filter((p) => group.memberIds.includes(p.id));
               return (
                 <View key={group.id} style={[styles.groupCard, { borderLeftColor: color }]}>
-                  <View style={[styles.groupColorDot, { backgroundColor: color }]} />
                   <View style={styles.groupInfo}>
                     <Text style={styles.groupName}>{group.name}</Text>
                     <View style={styles.memberAvatars}>
@@ -224,9 +245,7 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
                           <Text style={styles.memberAvatarText}>{m.name.slice(0, 2).toUpperCase()}</Text>
                         </View>
                       ))}
-                      {members.length > 6 && (
-                        <Text style={styles.memberMore}>+{members.length - 6}</Text>
-                      )}
+                      {members.length > 6 && <Text style={styles.memberMore}>+{members.length - 6}</Text>}
                     </View>
                   </View>
                   <Text style={styles.memberCount}>{members.length} membre{members.length > 1 ? 's' : ''}</Text>
@@ -243,14 +262,83 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
         </ScrollView>
       )}
 
+      {/* ── MODAL STATS JOUEUR ── */}
+      <Modal visible={!!statsProfile} transparent animationType="slide" onRequestClose={closeStats}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            {/* En-tête */}
+            <View style={styles.statsHeader}>
+              <View style={styles.statsAvatar}>
+                <Text style={styles.statsAvatarText}>
+                  {statsProfile?.name.slice(0, 2).toUpperCase()}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.statsName}>{statsProfile?.name}</Text>
+                <Text style={styles.statsSubtitle}>Statistiques globales</Text>
+              </View>
+              <TouchableOpacity onPress={closeStats} style={styles.statsClose}>
+                <MaterialCommunityIcons name="close" size={22} color="rgba(255,255,255,0.5)" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Chiffres clés */}
+            <View style={styles.statsKpis}>
+              <View style={styles.kpi}>
+                <Text style={styles.kpiValue}>{playerStats?.gamesPlayed ?? 0}</Text>
+                <Text style={styles.kpiLabel}>Parties</Text>
+              </View>
+              <View style={styles.kpiDivider} />
+              <View style={styles.kpi}>
+                <Text style={[styles.kpiValue, { color: '#f39c12' }]}>{playerStats?.wins ?? 0}</Text>
+                <Text style={styles.kpiLabel}>Victoires</Text>
+              </View>
+              <View style={styles.kpiDivider} />
+              <View style={styles.kpi}>
+                <Text style={[styles.kpiValue, { color: '#2ecc71' }]}>{winRate}%</Text>
+                <Text style={styles.kpiLabel}>Réussite</Text>
+              </View>
+            </View>
+
+            {/* Détail par jeu */}
+            <Text style={styles.statsSection}>Par jeu</Text>
+
+            <ScrollView style={styles.statsGameList} showsVerticalScrollIndicator={false}>
+              {playerStats && playerStats.gamesPlayed > 0 ? (
+                playedGames.map((game) => {
+                  const played = playerStats.gamesByGame[game.id] ?? 0;
+                  const won = playerStats.winsByGame[game.id] ?? 0;
+                  const rate = played > 0 ? Math.round((won / played) * 100) : 0;
+                  return (
+                    <View key={game.id} style={styles.statsGameRow}>
+                      <View style={[styles.statsGameDot, { backgroundColor: game.color }]} />
+                      <Text style={styles.statsGameName}>{game.name}</Text>
+                      <View style={styles.statsGameNumbers}>
+                        <Text style={styles.statsGamePlayed}>{played} partie{played > 1 ? 's' : ''}</Text>
+                        <Text style={styles.statsGameWon}>
+                          {won} victoire{won > 1 ? 's' : ''}
+                        </Text>
+                        <Text style={[styles.statsGameRate, { color: game.color }]}>{rate}%</Text>
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={styles.statsEmpty}>
+                  <MaterialCommunityIcons name="cards-outline" size={40} color="rgba(255,255,255,0.1)" />
+                  <Text style={styles.statsEmptyText}>Aucune partie jouée pour l'instant</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── MODAL GROUPE ── */}
       <Modal visible={showGroupModal} transparent animationType="slide" onRequestClose={() => setShowGroupModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              {editingGroup ? 'Modifier le groupe' : 'Nouveau groupe'}
-            </Text>
-
+            <Text style={styles.modalTitle}>{editingGroup ? 'Modifier le groupe' : 'Nouveau groupe'}</Text>
             <TextInput
               style={styles.modalInput}
               value={groupName}
@@ -259,11 +347,9 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
               placeholderTextColor="rgba(255,255,255,0.3)"
               autoFocus
             />
-
             <Text style={styles.modalSectionLabel}>
               Membres ({groupMemberIds.size} sélectionné{groupMemberIds.size > 1 ? 's' : ''})
             </Text>
-
             {profiles.length === 0 ? (
               <Text style={styles.modalEmpty}>Créez d'abord des profils dans l'onglet Profils.</Text>
             ) : (
@@ -286,18 +372,11 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
                 })}
               </ScrollView>
             )}
-
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: 'rgba(255,255,255,0.1)' }]}
-                onPress={() => setShowGroupModal(false)}
-              >
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: 'rgba(255,255,255,0.1)' }]} onPress={() => setShowGroupModal(false)}>
                 <Text style={styles.modalBtnTextGray}>Annuler</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: '#3498db' }]}
-                onPress={handleSaveGroup}
-              >
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: '#3498db' }]} onPress={handleSaveGroup}>
                 <Text style={styles.modalBtnTextWhite}>Enregistrer</Text>
               </TouchableOpacity>
             </View>
@@ -316,17 +395,13 @@ const styles = StyleSheet.create({
   },
   backButton: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center',
   },
   title: { fontSize: 22, fontWeight: '800', color: '#fff' },
   addButton: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#f39c12',
-    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#f39c12', justifyContent: 'center', alignItems: 'center',
   },
-
-  // Onglets
   tabs: {
     flexDirection: 'row', marginHorizontal: 20, marginBottom: 8,
     backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: 4,
@@ -338,21 +413,13 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
   tabText: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.4)' },
   tabTextActive: { color: '#fff' },
-
   scrollContent: { paddingHorizontal: 20, paddingBottom: 32, paddingTop: 8 },
 
   // Profils
-  form: {
-    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 16, padding: 20, marginBottom: 20,
-  },
+  form: { backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 16, padding: 20, marginBottom: 20 },
   formTitle: { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 16 },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10,
-    padding: 14, color: '#fff', fontSize: 16, marginBottom: 12,
-  },
-  confirmButton: {
-    backgroundColor: '#f39c12', borderRadius: 10, padding: 14, alignItems: 'center',
-  },
+  input: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, padding: 14, color: '#fff', fontSize: 16, marginBottom: 12 },
+  confirmButton: { backgroundColor: '#f39c12', borderRadius: 10, padding: 14, alignItems: 'center' },
   confirmButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
   emptyText: { fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.3)' },
@@ -364,37 +431,67 @@ const styles = StyleSheet.create({
   },
   profileAvatar: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: '#f39c12',
-    justifyContent: 'center', alignItems: 'center', marginRight: 14,
+    backgroundColor: '#f39c12', justifyContent: 'center', alignItems: 'center', marginRight: 14,
   },
   profileInitials: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  profileName: { flex: 1, fontSize: 16, fontWeight: '600', color: '#fff' },
-  deleteButton: { padding: 8 },
+  profileInfo: { flex: 1 },
+  profileName: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  profileHint: { fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 },
+  deleteButton: { padding: 6 },
 
   // Groupes
   groupCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 14,
-    padding: 14, marginBottom: 10,
-    borderLeftWidth: 4,
+    padding: 14, marginBottom: 10, borderLeftWidth: 4,
   },
-  groupColorDot: { width: 0 }, // border gauche suffit
   groupInfo: { flex: 1, gap: 8 },
   groupName: { fontSize: 16, fontWeight: '700', color: '#fff' },
   memberAvatars: { flexDirection: 'row', gap: 4 },
-  memberAvatar: {
-    width: 28, height: 28, borderRadius: 14,
-    justifyContent: 'center', alignItems: 'center',
-  },
+  memberAvatar: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   memberAvatarText: { fontSize: 10, fontWeight: '800', color: '#fff' },
   memberMore: { fontSize: 11, color: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginLeft: 2 },
   memberCount: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginRight: 8 },
   groupAction: { padding: 8 },
 
-  // Modal
-  modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end',
+  // Modal stats joueur
+  statsHeader: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 4 },
+  statsAvatar: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#f39c12', justifyContent: 'center', alignItems: 'center',
   },
+  statsAvatarText: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  statsName: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  statsSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+  statsClose: { padding: 4 },
+  statsKpis: {
+    flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 16, padding: 16, marginVertical: 12,
+  },
+  kpi: { flex: 1, alignItems: 'center', gap: 4 },
+  kpiValue: { fontSize: 26, fontWeight: '900', color: '#fff' },
+  kpiLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 0.8 },
+  kpiDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: 4 },
+  statsSection: {
+    fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.35)',
+    textTransform: 'uppercase', letterSpacing: 1.1, marginBottom: 10,
+  },
+  statsGameList: { maxHeight: 260 },
+  statsGameRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  statsGameDot: { width: 10, height: 10, borderRadius: 5 },
+  statsGameName: { flex: 1, fontSize: 14, fontWeight: '700', color: '#fff' },
+  statsGameNumbers: { alignItems: 'flex-end', gap: 1 },
+  statsGamePlayed: { fontSize: 12, color: 'rgba(255,255,255,0.4)' },
+  statsGameWon: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.7)' },
+  statsGameRate: { fontSize: 13, fontWeight: '800' },
+  statsEmpty: { alignItems: 'center', paddingVertical: 32, gap: 10 },
+  statsEmptyText: { fontSize: 14, color: 'rgba(255,255,255,0.25)', textAlign: 'center' },
+
+  // Modal générique
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalCard: {
     backgroundColor: '#16213e', borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 24, gap: 16, maxHeight: '85%',
@@ -405,17 +502,10 @@ const styles = StyleSheet.create({
     padding: 14, color: '#fff', fontSize: 16,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
   },
-  modalSectionLabel: {
-    fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.4)',
-    textTransform: 'uppercase', letterSpacing: 1,
-  },
+  modalSectionLabel: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 },
   modalEmpty: { fontSize: 14, color: 'rgba(255,255,255,0.35)', textAlign: 'center', paddingVertical: 16 },
   modalMemberList: { maxHeight: 280 },
-  modalMemberRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 10, paddingHorizontal: 4,
-    borderRadius: 10,
-  },
+  modalMemberRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 10 },
   modalMemberRowSelected: { backgroundColor: 'rgba(52,152,219,0.1)' },
   modalMemberName: { flex: 1, fontSize: 15, fontWeight: '600', color: '#fff' },
   modalActions: { flexDirection: 'row', gap: 12 },
