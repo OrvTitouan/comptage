@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Player, GameResult, PlayerResult } from '../../types';
+import { Player, GameResult, PlayerResult, PlayerScore } from '../../types';
 import { saveResult } from '../../storage/stats';
 
 const TOTAL_ROUNDS = 8;
@@ -24,7 +24,7 @@ interface FarwayGameScreenProps {
   players: Player[];
   onEnd: () => void;
   onGoHome: () => void;
-  onMeta: (leaderName: string, leaderScore: number) => void;
+  onMeta: (scores: PlayerScore[]) => void;
 }
 
 function initInputs(players: Player[]) {
@@ -39,6 +39,8 @@ export default function FarwayGameScreen({ players, onEnd, onGoHome, onMeta }: F
   // 1-8 = régions (tour 8→1), 9 = sanctuaires
   const [scoringRound, setScoringRound] = useState(1);
   const [tiebreakers, setTiebreakers] = useState<Record<string, string>>(initInputs(players));
+  // Historique des contributions par tour pour pouvoir annuler
+  const [roundHistory, setRoundHistory] = useState<Record<string, number>[]>([]);
 
   const isSanctuaires = scoringRound === TOTAL_SCORING;
   const gameTurnLabel = TOTAL_ROUNDS - scoringRound + 1;
@@ -54,14 +56,15 @@ export default function FarwayGameScreen({ players, onEnd, onGoHome, onMeta }: F
       return;
     }
 
+    const contrib = Object.fromEntries(players.map((p) => [p.id, parseInt(inputs[p.id]) || 0]));
     const newTotals = { ...totals };
     players.forEach((p) => {
-      newTotals[p.id] = (newTotals[p.id] ?? 0) + (parseInt(inputs[p.id]) || 0);
+      newTotals[p.id] = (newTotals[p.id] ?? 0) + contrib[p.id];
     });
     setTotals(newTotals);
-    // Mettre à jour le leader
-    const leader = [...players].sort((a, b) => (newTotals[b.id] ?? 0) - (newTotals[a.id] ?? 0))[0];
-    onMeta(leader.name, newTotals[leader.id] ?? 0);
+    setRoundHistory((prev) => [...prev, contrib]);
+    // Mettre à jour les scores pour l'accueil et les stats
+    onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: newTotals[p.id] ?? 0 })));
 
     if (isSanctuaires) {
       const withTotals = players.map((p) => ({
@@ -104,6 +107,17 @@ export default function FarwayGameScreen({ players, onEnd, onGoHome, onMeta }: F
     if (scoringRound === 1) {
       onGoHome();
     } else {
+      // Annuler les scores du tour précédent
+      const lastContrib = roundHistory[roundHistory.length - 1];
+      if (lastContrib) {
+        const restoredTotals = { ...totals };
+        players.forEach((p) => {
+          restoredTotals[p.id] = (restoredTotals[p.id] ?? 0) - (lastContrib[p.id] ?? 0);
+        });
+        setTotals(restoredTotals);
+        setRoundHistory((prev) => prev.slice(0, -1));
+        onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: restoredTotals[p.id] ?? 0 })));
+      }
       setScoringRound((r) => r - 1);
       setInputs(initInputs(players));
     }

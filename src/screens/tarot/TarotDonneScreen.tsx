@@ -73,6 +73,8 @@ function ToggleGroup<T extends string>({
 
 export default function TarotDonneScreen({ donneNumber, players, onValidate, onBack }: Props) {
   const [preneurId, setPreneurId] = useState<string | null>(null);
+  // À 5 joueurs : undefined = non choisi, null = seul (1c4), string = ID partenaire
+  const [partnerSelection, setPartnerSelection] = useState<string | null | undefined>(undefined);
   const [contract, setContract] = useState<TarotContract | null>(null);
   const [bouts, setBouts] = useState<0 | 1 | 2 | 3>(0);
   const [pointsStr, setPointsStr] = useState('');
@@ -81,13 +83,19 @@ export default function TarotDonneScreen({ donneNumber, players, onValidate, onB
   const [poigneeBy, setPoigneeBy] = useState<'preneur' | 'defense' | null>(null);
   const [chelem, setChelem] = useState<TarotChelemResult | null>(null);
 
+  const is5Players = players.length === 5;
   const points = parseInt(pointsStr) || 0;
   const seuil = SEUILS[bouts];
-  const isValid = preneurId !== null && contract !== null && pointsStr !== '';
+  const isValid =
+    preneurId !== null &&
+    contract !== null &&
+    pointsStr !== '' &&
+    (!is5Players || partnerSelection !== undefined);
 
   // Score preview (recalculé à chaque changement)
   const preview = useMemo(() => {
     if (!preneurId || !contract || pointsStr === '') return null;
+    if (is5Players && partnerSelection === undefined) return null;
     const score: TarotDonneScore = {
       preneurId,
       contract,
@@ -97,12 +105,13 @@ export default function TarotDonneScreen({ donneNumber, players, onValidate, onB
       poignee: poigneeType,
       poigneeBy,
       chelem,
+      ...(is5Players ? { partnerId: partnerSelection ?? null } : {}),
     };
     return calcTarotDonne(score, players.map((p) => p.id));
-  }, [preneurId, contract, bouts, points, petitAuBout, poigneeType, poigneeBy, chelem, players, pointsStr]);
+  }, [preneurId, partnerSelection, contract, bouts, points, petitAuBout, poigneeType, poigneeBy, chelem, players, pointsStr, is5Players]);
 
   const handleValidate = () => {
-    if (!preneurId || !contract || pointsStr === '') return;
+    if (!isValid || !preneurId || !contract) return;
     onValidate({
       preneurId,
       contract,
@@ -112,6 +121,7 @@ export default function TarotDonneScreen({ donneNumber, players, onValidate, onB
       poignee: poigneeType,
       poigneeBy,
       chelem,
+      ...(is5Players ? { partnerId: partnerSelection ?? null } : {}),
     });
   };
 
@@ -144,7 +154,7 @@ export default function TarotDonneScreen({ donneNumber, players, onValidate, onB
                 <TouchableOpacity
                   key={p.id}
                   style={[styles.playerChip, selected && styles.playerChipSelected]}
-                  onPress={() => setPreneurId(p.id)}
+                  onPress={() => { setPreneurId(p.id); setPartnerSelection(undefined); }}
                 >
                   <Text style={[styles.playerChipText, selected && styles.playerChipTextSelected]}>
                     {p.name}
@@ -153,6 +163,46 @@ export default function TarotDonneScreen({ donneNumber, players, onValidate, onB
               );
             })}
           </View>
+
+          {/* ── Partenaire (5 joueurs uniquement) ── */}
+          {is5Players && (
+            <>
+              <Text style={styles.sectionLabel}>Partenaire appelé</Text>
+              <View style={styles.playersRow}>
+                {/* Joueurs autres que le preneur */}
+                {players
+                  .filter((p) => p.id !== preneurId)
+                  .map((p) => {
+                    const selected = partnerSelection === p.id;
+                    return (
+                      <TouchableOpacity
+                        key={p.id}
+                        style={[styles.playerChip, selected && styles.partnerChipSelected]}
+                        onPress={() => setPartnerSelection(selected ? undefined : p.id)}
+                      >
+                        <Text style={[styles.playerChipText, selected && styles.playerChipTextSelected]}>
+                          {p.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                {/* Option "Seul" */}
+                <TouchableOpacity
+                  style={[styles.playerChip, partnerSelection === null && styles.aloneChipSelected]}
+                  onPress={() => setPartnerSelection(partnerSelection === null ? undefined : null)}
+                >
+                  <Text style={[styles.playerChipText, partnerSelection === null && styles.playerChipTextSelected]}>
+                    Seul (1c4)
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {partnerSelection === null && (
+                <Text style={styles.aloneHint}>
+                  Le preneur joue seul contre les 4 autres — ses points sont multipliés par 4.
+                </Text>
+              )}
+            </>
+          )}
 
           {/* ── Contrat ── */}
           <Text style={styles.sectionLabel}>Contrat</Text>
@@ -317,14 +367,18 @@ export default function TarotDonneScreen({ donneNumber, players, onValidate, onB
                 {players.map((p) => {
                   const s = preview[p.id] ?? 0;
                   const isPreneur = p.id === preneurId;
+                  const isPartner = is5Players && partnerSelection === p.id;
+                  const roleLabel = isPreneur ? ' (preneur)' : isPartner ? ' (partenaire)' : '';
                   return (
                     <View key={p.id} style={styles.previewRow}>
-                      <View style={[styles.previewAvatar, isPreneur && styles.previewAvatarPreneur]}>
+                      <View style={[
+                        styles.previewAvatar,
+                        isPreneur && styles.previewAvatarPreneur,
+                        isPartner && styles.previewAvatarPartner,
+                      ]}>
                         <Text style={styles.previewAvatarText}>{p.name.slice(0, 2).toUpperCase()}</Text>
                       </View>
-                      <Text style={styles.previewName}>
-                        {p.name}{isPreneur ? ' (preneur)' : ''}
-                      </Text>
+                      <Text style={styles.previewName}>{p.name}{roleLabel}</Text>
                       <Text style={[
                         styles.previewScore,
                         s > 0 && styles.previewScorePos,
@@ -401,8 +455,13 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: 'transparent',
   },
   playerChipSelected: { borderColor: RED, backgroundColor: 'rgba(192,57,43,0.2)' },
+  partnerChipSelected: { borderColor: '#f39c12', backgroundColor: 'rgba(243,156,18,0.2)' },
+  aloneChipSelected: { borderColor: '#9b59b6', backgroundColor: 'rgba(155,89,182,0.2)' },
   playerChipText: { fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.5)' },
   playerChipTextSelected: { color: '#fff' },
+  aloneHint: {
+    fontSize: 12, color: 'rgba(155,89,182,0.8)', fontStyle: 'italic', marginTop: -4,
+  },
 
   // Contrat
   contractRow: { flexDirection: 'row', gap: 8 },
@@ -479,6 +538,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   previewAvatarPreneur: { backgroundColor: RED },
+  previewAvatarPartner: { backgroundColor: '#f39c12' },
   previewAvatarText: { fontSize: 12, fontWeight: '800', color: '#fff' },
   previewName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#fff' },
   previewScore: { fontSize: 16, fontWeight: '800', color: 'rgba(255,255,255,0.5)' },

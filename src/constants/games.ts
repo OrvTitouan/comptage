@@ -51,4 +51,14 @@ export const GAMES: Game[] = [
     minPlayers: 2,
     maxPlayers: 5,
   },
+  {
+    id: '7wonders',
+    name: '7 Wonders',
+    description: 'Bâtissez la civilisation la plus rayonnante de l\'Antiquité !',
+    icon: 'pillar',
+    color: '#7D3C98',
+    accentColor: '#5B2C6F',
+    minPlayers: 2,
+    maxPlayers: 7,
+  },
 ];

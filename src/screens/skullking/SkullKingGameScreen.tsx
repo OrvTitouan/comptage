@@ -63,6 +63,12 @@ export default function SkullKingGameScreen({ players, onEnd, onGoHome, onMeta }
     onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: getTotalScore(p.id, updatedRounds) })));
   };
 
+  const handleUndoRound = () => {
+    const updatedRounds = rounds.slice(0, -1);
+    setRounds(updatedRounds);
+    onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: getTotalScore(p.id, updatedRounds) })));
+  };
+
   const handleEndGame = async () => {
     const withTotals = players.map((p) => ({
       player: p,
@@ -269,6 +275,12 @@ export default function SkullKingGameScreen({ players, onEnd, onGoHome, onMeta }
       </ScrollView>
 
       <View style={styles.footer}>
+        {rounds.length > 0 && (
+          <TouchableOpacity style={styles.undoBtn} onPress={handleUndoRound} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="undo" size={16} color="rgba(255,255,255,0.5)" />
+            <Text style={styles.undoBtnText}>Corriger la manche {rounds.length}</Text>
+          </TouchableOpacity>
+        )}
         {isFinished ? (
           <TouchableOpacity style={styles.endButton} onPress={handleEndGame} activeOpacity={0.85}>
             <MaterialCommunityIcons name="trophy" size={22} color="#fff" />
@@ -389,7 +401,14 @@ const styles = StyleSheet.create({
     gap: 10, backgroundColor: BLUE_DARK, borderRadius: 16, padding: 18,
     width: '100%', marginTop: 8,
   },
-  footer: { padding: 16, paddingBottom: 28 },
+  footer: { padding: 16, paddingBottom: 28, gap: 10 },
+  undoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  undoBtnText: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
   nextButton: {
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
     gap: 10, backgroundColor: BLUE, borderRadius: 16, padding: 18,

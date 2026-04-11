@@ -1,7 +1,7 @@
 /**
- * Génère assets/icon.png et assets/adaptive-icon.png
- * Aucune dépendance externe — Node.js uniquement.
- * Usage : node generate-icon.js
+ * Génère assets/icon.png - Kounter
+ * Design : carte blanche + trophée doré
+ * Aucune dépendance externe — node generate-icon.js
  */
 const zlib = require('zlib');
 const fs   = require('fs');
@@ -37,9 +37,8 @@ function chunk(type, data) {
 function buildPNG(pixels) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(SIZE, 0); ihdr.writeUInt32BE(SIZE, 4);
-  ihdr[8] = 8; ihdr[9] = 2; // bit-depth=8, RGB
+  ihdr[8] = 8; ihdr[9] = 2;
 
-  // Scanlines with filter byte 0 (None)
   const row = 1 + SIZE * 3;
   const raw = Buffer.alloc(SIZE * row);
   for (let y = 0; y < SIZE; y++) {
@@ -55,14 +54,21 @@ function buildPNG(pixels) {
   ]);
 }
 
-// ── Pixel buffer + helpers ────────────────────────────────────
+// ── Pixel helpers ─────────────────────────────────────────────
 
 const px = Buffer.alloc(SIZE * SIZE * 3);
 
 function set(x, y, r, g, b) {
+  x = Math.round(x); y = Math.round(y);
   if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return;
   const i = (y * SIZE + x) * 3;
   px[i] = r; px[i + 1] = g; px[i + 2] = b;
+}
+
+function fillRect(x0, y0, w, h, r, g, b) {
+  for (let y = y0; y < y0 + h; y++)
+    for (let x = x0; x < x0 + w; x++)
+      set(x, y, r, g, b);
 }
 
 function fillCircle(cx, cy, rad, r, g, b) {
@@ -88,61 +94,145 @@ function fillRoundedRect(x0, y0, w, h, rad, r, g, b) {
   }
 }
 
+// Rectangle pivoté (pour la carte en biais)
+function fillRotatedRoundedRect(cx, cy, w, h, rad, angle, r, g, b) {
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const hw = w / 2, hh = h / 2;
+  const bx = Math.ceil(Math.abs(hw * cos) + Math.abs(hh * sin)) + 2;
+  const by = Math.ceil(Math.abs(hw * sin) + Math.abs(hh * cos)) + 2;
+  for (let dy = -by; dy <= by; dy++) {
+    for (let dx = -bx; dx <= bx; dx++) {
+      const lx =  dx * cos + dy * sin;
+      const ly = -dx * sin + dy * cos;
+      if (lx < -hw || lx > hw || ly < -hh || ly > hh) continue;
+      const nearL = lx < -hw + rad, nearR = lx > hw - rad;
+      const nearT = ly < -hh + rad, nearB = ly > hh - rad;
+      if ((nearL || nearR) && (nearT || nearB)) {
+        const ccx = nearL ? -hw + rad : hw - rad;
+        const ccy = nearT ? -hh + rad : hh - rad;
+        if ((lx - ccx) ** 2 + (ly - ccy) ** 2 > rad * rad) continue;
+      }
+      set(cx + dx, cy + dy, r, g, b);
+    }
+  }
+}
+
+// Diamant ♦
 function fillDiamond(cx, cy, half, r, g, b) {
   for (let y = cy - half; y <= cy + half; y++)
     for (let x = cx - half; x <= cx + half; x++)
       if (Math.abs(x - cx) + Math.abs(y - cy) <= half) set(x, y, r, g, b);
 }
 
-// ── Icon design ───────────────────────────────────────────────
-//
-//  Fond : dégradé #1a1a2e → #16213e
-//  Carte blanche arrondie (ombre portée sombre)
-//  Gros diamant rouge ♦ centré
-//  Petits diamants en coins (style carte à jouer)
+// Trophée doré
+function drawTrophy(cx, cy, size, r, g, b) {
+  const s = size;
 
-// 1. Dégradé de fond
+  // Dôme (demi-cercle supérieur de la coupe)
+  const domeR  = Math.round(s * 0.30);
+  const domeY  = cy - Math.round(s * 0.20);
+  for (let dy = -domeR; dy <= 0; dy++)
+    for (let dx = -domeR; dx <= domeR; dx++)
+      if (dx * dx + dy * dy <= domeR * domeR) set(cx + dx, domeY + dy, r, g, b);
+
+  // Corps de la coupe (trapèze : large en haut, plus étroit en bas)
+  const cupTopY  = domeY;
+  const cupBotY  = cy + Math.round(s * 0.18);
+  const cupTopHW = domeR;
+  const cupBotHW = Math.round(s * 0.18);
+  for (let y = cupTopY; y <= cupBotY; y++) {
+    const t  = (y - cupTopY) / (cupBotY - cupTopY);
+    const hw = Math.round(cupTopHW + (cupBotHW - cupTopHW) * t);
+    for (let x = cx - hw; x <= cx + hw; x++) set(x, y, r, g, b);
+  }
+
+  // Anses (demi-cercles sur les côtés de la coupe)
+  const handleY   = domeY - Math.round(s * 0.02);
+  const handleOR  = Math.round(s * 0.14);
+  const handleIR  = Math.round(s * 0.08);
+  const handleCXL = cx - cupTopHW;
+  const handleCXR = cx + cupTopHW;
+  [-1, 1].forEach((side) => {
+    const hcx = side === -1 ? handleCXL : handleCXR;
+    for (let dy = 0; dy <= handleOR; dy++) {
+      for (let dx = -handleOR; dx <= handleOR; dx++) {
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= handleOR * handleOR && d2 >= handleIR * handleIR) {
+          // Seulement le côté extérieur
+          if (side === -1 && hcx + dx > cx - cupTopHW + 4) continue;
+          if (side ===  1 && hcx + dx < cx + cupTopHW - 4) continue;
+          set(hcx + dx, handleY + dy, r, g, b);
+        }
+      }
+    }
+  });
+
+  // Tige
+  const stemHW  = Math.round(s * 0.06);
+  const stemTop = cupBotY;
+  const stemBot = cy + Math.round(s * 0.44);
+  for (let y = stemTop; y <= stemBot; y++)
+    for (let x = cx - stemHW; x <= cx + stemHW; x++)
+      set(x, y, r, g, b);
+
+  // Socle
+  const baseHW  = Math.round(s * 0.36);
+  const baseTop = stemBot;
+  const baseH   = Math.round(s * 0.14);
+  fillRoundedRect(cx - baseHW, baseTop, baseHW * 2, baseH, 10, r, g, b);
+}
+
+// ── Dessin du logo ────────────────────────────────────────────
+
+// 1. Fond dégradé #1a1a2e → #0f3460
 for (let y = 0; y < SIZE; y++) {
   const t = y / (SIZE - 1);
-  const R = Math.round(26  + t * (22  - 26));
-  const G = Math.round(26  + t * (33  - 26));
-  const B = Math.round(46  + t * (62  - 46));
+  const R = Math.round(26  + t * (15  - 26));
+  const G = Math.round(26  + t * (52  - 26));
+  const B = Math.round(46  + t * (96  - 46));
   for (let x = 0; x < SIZE; x++) set(x, y, R, G, B);
 }
 
-// 2. Ombre de la carte
-fillRoundedRect(92, 102, 840, 840, 112, 10, 10, 22);
+// 2. Carte de derrière (légèrement pivotée, couleur foncée)
+fillRotatedRoundedRect(510, 515, 720, 840, 90, -0.22, 30, 35, 65);
+fillRotatedRoundedRect(505, 510, 700, 820, 86, -0.22, 45, 50, 95);
 
-// 3. Carte blanche
-fillRoundedRect(80, 80, 840, 840, 112, 248, 248, 248);
+// 3. Carte principale blanche (droite)
+// Ombre portée
+fillRoundedRect(88, 100, 820, 820, 108, 12, 12, 28);
+// Carte
+fillRoundedRect(80, 88, 820, 820, 108, 250, 250, 255);
+// Bordure intérieure subtile
+fillRoundedRect(95, 103, 790, 790, 96, 225, 225, 235);
+// Fond blanc
+fillRoundedRect(100, 108, 780, 780, 92, 255, 255, 255);
 
-// 4. Liseré intérieur subtil (gris très clair)
-fillRoundedRect(96, 96, 808, 808, 100, 230, 230, 230);
-
-// 5. Remplissage blanc intérieur
-fillRoundedRect(100, 100, 800, 800, 96, 255, 255, 255);
-
-// 6. Grand diamant ♦ central  #e74c3c
-fillDiamond(512, 512, 268, 231, 76, 60);
-
-// Reflet sur le diamant (coin supérieur gauche plus clair)
-for (let y = 244; y < 512; y++) {
-  for (let x = 244; x < 512; x++) {
-    const d = Math.abs(x - 512) + Math.abs(y - 512);
-    if (d <= 268) {
-      const t = 1 - (d / 268);
-      const light = Math.round(t * 30);
-      const idx = (y * SIZE + x) * 3;
-      px[idx]     = Math.min(255, px[idx]     + light);
-      px[idx + 1] = Math.min(255, px[idx + 1] + Math.round(light * 0.3));
-      px[idx + 2] = Math.min(255, px[idx + 2] + Math.round(light * 0.3));
+// 4. Trophée doré — couleur principale #f39c12
+// Ombre du trophée (décalée, sombre)
+drawTrophy(518, 532, 390, 160, 110, 20);
+// Trophée doré
+drawTrophy(512, 525, 390, 243, 156, 18);
+// Reflet sur la coupe (zone plus claire en haut à gauche)
+for (let dy = -117; dy <= 0; dy++) {
+  for (let dx = -117; dx <= 0; dx++) {
+    const d2 = dx * dx + dy * dy;
+    if (d2 <= 117 * 117) {
+      const bx = 512 + dx, by = 525 - 78 + dy;
+      const idx = (Math.round(by) * SIZE + Math.round(bx)) * 3;
+      if (idx >= 0 && idx < px.length - 2) {
+        const t = 1 - Math.sqrt(d2) / 117;
+        px[idx]     = Math.min(255, px[idx]     + Math.round(t * 45));
+        px[idx + 1] = Math.min(255, px[idx + 1] + Math.round(t * 28));
+        px[idx + 2] = Math.min(255, px[idx + 2] + Math.round(t * 5));
+      }
     }
   }
 }
 
-// 7. Petits diamants en coins (style vrai carte à jouer)
-fillDiamond(188, 198, 58, 231, 76, 60); // haut-gauche
-fillDiamond(836, 826, 58, 231, 76, 60); // bas-droite
+// 5. Diamant rouge ♦ en haut de la carte (au-dessus du trophée)
+fillDiamond(512, 164, 55, 220, 50, 50);   // grand diamant
+fillDiamond(168, 160, 38, 220, 50, 50);   // coin haut-gauche
+fillDiamond(856, 840, 38, 220, 50, 50);   // coin bas-droite
 
 // ── Export ────────────────────────────────────────────────────
 
@@ -156,4 +246,3 @@ fs.writeFileSync('assets/splash.png', pngData);
 console.log('✓ assets/icon.png');
 console.log('✓ assets/adaptive-icon.png');
 console.log('✓ assets/splash.png');
-console.log('\nRelancez : npx.cmd expo start --web');

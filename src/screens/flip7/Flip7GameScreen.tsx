@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Player, Flip7Round, Flip7RoundScore, calcFlip7Score, FLIP7_WIN_SCORE, GameResult } from '../../types';
+import { Player, Flip7Round, Flip7RoundScore, calcFlip7Score, FLIP7_WIN_SCORE, GameResult, PlayerScore } from '../../types';
 import Flip7RoundScreen from './Flip7RoundScreen';
 import { saveResult } from '../../storage/stats';
 
@@ -18,7 +18,7 @@ interface Flip7GameScreenProps {
   players: Player[];
   onEnd: () => void;
   onGoHome: () => void;
-  onMeta: (leaderName: string, leaderScore: number) => void;
+  onMeta: (scores: PlayerScore[]) => void;
 }
 
 function getTotalScore(playerId: string, rounds: Flip7Round[]): number {
@@ -39,11 +39,8 @@ export default function Flip7GameScreen({ players, onEnd, onGoHome, onMeta }: Fl
     const updatedRounds = [...rounds, newRound];
     setRounds(updatedRounds);
     setEnteringRound(false);
-    // Mettre à jour le leader
-    const sorted = [...players].sort(
-      (a, b) => getTotalScore(b.id, updatedRounds) - getTotalScore(a.id, updatedRounds)
-    );
-    onMeta(sorted[0].name, getTotalScore(sorted[0].id, updatedRounds));
+    // Mettre à jour les scores pour l'accueil et les stats
+    onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: getTotalScore(p.id, updatedRounds) })));
 
     // Vérifier si un joueur a atteint 200 pts
     const winner = players.find(
@@ -78,6 +75,12 @@ export default function Flip7GameScreen({ players, onEnd, onGoHome, onMeta }: Fl
         );
       }, 300);
     }
+  };
+
+  const handleUndoRound = () => {
+    const updatedRounds = rounds.slice(0, -1);
+    setRounds(updatedRounds);
+    onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: getTotalScore(p.id, updatedRounds) })));
   };
 
   if (enteringRound) {
@@ -192,6 +195,12 @@ export default function Flip7GameScreen({ players, onEnd, onGoHome, onMeta }: Fl
       </ScrollView>
 
       <View style={styles.footer}>
+        {rounds.length > 0 && (
+          <TouchableOpacity style={styles.undoBtn} onPress={handleUndoRound} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="undo" size={16} color="rgba(255,255,255,0.5)" />
+            <Text style={styles.undoBtnText}>Corriger la manche {rounds.length}</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.nextButton} onPress={() => setEnteringRound(true)} activeOpacity={0.85}>
           <Text style={styles.nextButtonText}>
             {rounds.length === 0 ? 'Commencer la manche 1' : `Saisir manche ${currentRound}`}
@@ -272,7 +281,14 @@ const styles = StyleSheet.create({
   historyCellBusted: { color: '#e74c3c' },
   historyCellFlip7: { color: '#f39c12' },
   historyCellTotal: { fontWeight: '800', color: '#fff' },
-  footer: { padding: 20, paddingBottom: 32 },
+  footer: { padding: 20, paddingBottom: 32, gap: 10 },
+  undoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  undoBtnText: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
   nextButton: {
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
     gap: 10, backgroundColor: '#e74c3c', borderRadius: 16, padding: 18,

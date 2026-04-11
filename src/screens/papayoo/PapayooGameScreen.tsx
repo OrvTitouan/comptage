@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Player, PapayooRound, PapayooRoundScore, GameResult } from '../../types';
+import { Player, PapayooRound, PapayooRoundScore, GameResult, PlayerScore } from '../../types';
 import PapayooRoundScreen from './PapayooRoundScreen';
 import { saveResult } from '../../storage/stats';
 
@@ -19,7 +19,7 @@ interface PapayooGameScreenProps {
   totalRounds: number;
   onEnd: () => void;
   onGoHome: () => void;
-  onMeta: (leaderName: string, leaderScore: number) => void;
+  onMeta: (scores: PlayerScore[]) => void;
 }
 
 function getTotalScore(playerId: string, rounds: PapayooRound[]): number {
@@ -42,11 +42,14 @@ export default function PapayooGameScreen({ players, totalRounds, onEnd, onGoHom
     const updatedRounds = [...rounds, newRound];
     setRounds(updatedRounds);
     setEnteringRound(false);
-    // Leader = joueur avec le moins de points (Papayoo : score bas = bon)
-    const sorted = [...players].sort(
-      (a, b) => getTotalScore(a.id, updatedRounds) - getTotalScore(b.id, updatedRounds)
-    );
-    onMeta(sorted[0].name, getTotalScore(sorted[0].id, updatedRounds));
+    // Mettre à jour les scores pour l'accueil et les stats (Papayoo : score bas = bon)
+    onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: getTotalScore(p.id, updatedRounds) })));
+  };
+
+  const handleUndoRound = () => {
+    const updatedRounds = rounds.slice(0, -1);
+    setRounds(updatedRounds);
+    onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: getTotalScore(p.id, updatedRounds) })));
   };
 
   const handleEndGame = () => {
@@ -173,6 +176,12 @@ export default function PapayooGameScreen({ players, totalRounds, onEnd, onGoHom
       </ScrollView>
 
       <View style={styles.footer}>
+        {rounds.length > 0 && (
+          <TouchableOpacity style={styles.undoBtn} onPress={handleUndoRound} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="undo" size={16} color="rgba(255,255,255,0.5)" />
+            <Text style={styles.undoBtnText}>Corriger la manche {rounds.length}</Text>
+          </TouchableOpacity>
+        )}
         {isFinished ? (
           <TouchableOpacity style={styles.endButton} onPress={handleEndGame} activeOpacity={0.85}>
             <Text style={styles.endButtonText}>Voir le gagnant</Text>
@@ -319,7 +328,15 @@ const styles = StyleSheet.create({
   footer: {
     padding: 24,
     paddingBottom: 32,
+    gap: 10,
   },
+  undoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  undoBtnText: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
   nextButton: {
     flexDirection: 'row',
     justifyContent: 'center',

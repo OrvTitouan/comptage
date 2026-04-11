@@ -14,13 +14,14 @@ import {
   TextInput,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { GameResult, GameId, Group } from '../types';
+import { GameResult, GameId, Group, ActiveGameState } from '../types';
 import { loadResults, computeStats, PlayerStats, deleteResult, importResults } from '../storage/stats';
 import { loadGroups } from '../storage/groups';
 import { GAMES } from '../constants/games';
 
 interface StatsScreenProps {
   onBack: () => void;
+  activeGames?: ActiveGameState[];
 }
 
 type Tab = 'history' | 'trophies' | 'games';
@@ -49,7 +50,7 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
-export default function StatsScreen({ onBack }: StatsScreenProps) {
+export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenProps) {
   const [view, setView] = useState<StatsView>('selectGroup');
   const [tab, setTab] = useState<Tab>('trophies');
   const [allResults, setAllResults] = useState<GameResult[]>([]);
@@ -67,6 +68,32 @@ export default function StatsScreen({ onBack }: StatsScreenProps) {
 
   useEffect(() => { reload(); }, []);
 
+  // ── Résultats provisoires (parties en cours) ─────────────────
+
+  const provisionalResults = useMemo((): GameResult[] => {
+    return activeGames
+      .filter((ag) => ag.currentScores && ag.currentScores.length > 0)
+      .map((ag) => {
+        const scores = ag.currentScores!;
+        const isLowWins = ag.game.id === 'papayoo';
+        const sorted = [...scores].sort((a, b) => isLowWins ? a.score - b.score : b.score - a.score);
+        const topScore = sorted[0].score;
+        return {
+          id: `__active__${ag.id}`,
+          gameId: ag.game.id,
+          gameName: ag.game.name,
+          date: new Date().toISOString(),
+          rounds: ag.totalRounds,
+          playerResults: scores.map((s) => ({
+            playerId: s.playerId,
+            playerName: s.playerName,
+            score: s.score,
+            winner: s.score === topScore,
+          })),
+        };
+      });
+  }, [activeGames]);
+
   // ── Filtrage ─────────────────────────────────────────────────
 
   const filteredResults = useMemo(() => {
@@ -79,8 +106,14 @@ export default function StatsScreen({ onBack }: StatsScreenProps) {
     if (gameFilter) {
       r = r.filter((result) => result.gameId === gameFilter);
     }
-    return r;
-  }, [allResults, selectedGroup, gameFilter]);
+    const matching = provisionalResults.filter((pr) => {
+      const groupMatch = !selectedGroup ||
+        pr.playerResults.every((p) => selectedGroup.memberIds.includes(p.playerId));
+      const gameMatch = !gameFilter || pr.gameId === gameFilter;
+      return groupMatch && gameMatch;
+    });
+    return [...matching, ...r];
+  }, [allResults, selectedGroup, gameFilter, provisionalResults]);
 
   const filteredStats = useMemo(() => computeStats(filteredResults), [filteredResults]);
 
@@ -114,7 +147,7 @@ export default function StatsScreen({ onBack }: StatsScreenProps) {
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else {
-      await Share.share({ message: json, title: 'Parties Comptage Jeux' });
+      await Share.share({ message: json, title: 'Parties Kounter' });
     }
   };
 
@@ -172,7 +205,9 @@ export default function StatsScreen({ onBack }: StatsScreenProps) {
             </View>
             <View style={styles.groupSelectInfo}>
               <Text style={styles.groupSelectName}>Toutes les parties</Text>
-              <Text style={styles.groupSelectSub}>{allResults.length} partie{allResults.length > 1 ? 's' : ''} enregistrée{allResults.length > 1 ? 's' : ''}</Text>
+              <Text style={styles.groupSelectSub}>
+                {allResults.length + provisionalResults.length} partie{(allResults.length + provisionalResults.length) > 1 ? 's' : ''}{provisionalResults.length > 0 ? ` (${provisionalResults.length} en cours)` : ` enregistrée${allResults.length > 1 ? 's' : ''}`}
+              </Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={22} color="rgba(255,255,255,0.4)" />
           </TouchableOpacity>
@@ -382,42 +417,48 @@ export default function StatsScreen({ onBack }: StatsScreenProps) {
             {filteredResults.length === 0
               ? <EmptyState icon="history" text="Aucune partie" sub="L'historique apparaîtra ici" />
               : filteredResults.map((result) => {
-                const winner = result.playerResults.find((p) => p.winner);
+                const isActive = result.id.startsWith('__active__');
+                const leader = result.playerResults.find((p) => p.winner);
                 const sorted = [...result.playerResults].sort((a, b) =>
                   result.gameId === 'papayoo' ? a.score - b.score : b.score - a.score
                 );
                 return (
-                  <View key={result.id} style={styles.historyCard}>
+                  <View key={result.id} style={[styles.historyCard, isActive && styles.historyCardActive]}>
                     <View style={styles.historyHeader}>
                       <View style={[styles.gameIcon, { backgroundColor: GAME_COLORS[result.gameId] }]}>
                         <MaterialCommunityIcons name={GAME_ICONS[result.gameId] as any} size={18} color="#fff" />
                       </View>
                       <View style={styles.historyInfo}>
                         <Text style={styles.historyGame}>{result.gameName}</Text>
-                        <Text style={styles.historyMeta}>
-                          {formatDate(result.date)} · {result.rounds} manche{result.rounds > 1 ? 's' : ''}
-                        </Text>
+                        {isActive
+                          ? <Text style={[styles.historyMeta, styles.historyMetaActive]}>En cours</Text>
+                          : <Text style={styles.historyMeta}>
+                              {formatDate(result.date)} · {result.rounds} manche{result.rounds > 1 ? 's' : ''}
+                            </Text>
+                        }
                       </View>
-                      {winner && (
-                        <View style={styles.historyWinner}>
-                          <MaterialCommunityIcons name="trophy" size={13} color="#f39c12" />
-                          <Text style={styles.historyWinnerName}>{winner.playerName}</Text>
+                      {leader && (
+                        <View style={[styles.historyWinner, isActive && styles.historyWinnerActive]}>
+                          <MaterialCommunityIcons name={isActive ? 'crown' : 'trophy'} size={13} color={isActive ? '#2ecc71' : '#f39c12'} />
+                          <Text style={[styles.historyWinnerName, isActive && styles.historyWinnerNameActive]}>{leader.playerName}</Text>
                         </View>
                       )}
-                      <TouchableOpacity
-                        style={styles.deleteBtn}
-                        onPress={() => handleDelete(result)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <MaterialCommunityIcons name="trash-can-outline" size={18} color="rgba(255,255,255,0.3)" />
-                      </TouchableOpacity>
+                      {!isActive && (
+                        <TouchableOpacity
+                          style={styles.deleteBtn}
+                          onPress={() => handleDelete(result)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <MaterialCommunityIcons name="trash-can-outline" size={18} color="rgba(255,255,255,0.3)" />
+                        </TouchableOpacity>
+                      )}
                     </View>
                     <View style={styles.historyScores}>
                       {sorted.map((pr, i) => (
                         <View key={pr.playerId} style={styles.historyScoreRow}>
                           <Text style={styles.historyRank}>#{i + 1}</Text>
                           <Text style={styles.historyPlayerName}>{pr.playerName}</Text>
-                          <Text style={[styles.historyScore, pr.winner && styles.historyScoreWinner]}>
+                          <Text style={[styles.historyScore, pr.winner && styles.historyScoreWinner, isActive && pr.winner && styles.historyScoreLeader]}>
                             {pr.score} pts
                           </Text>
                         </View>
@@ -584,6 +625,7 @@ const styles = StyleSheet.create({
   importBtn: { backgroundColor: 'rgba(52,152,219,0.2)', borderColor: 'rgba(52,152,219,0.4)' },
   exportBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   historyCard: { backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 16, overflow: 'hidden' },
+  historyCardActive: { borderWidth: 1, borderColor: 'rgba(46,204,113,0.4)', backgroundColor: 'rgba(46,204,113,0.06)' },
   historyHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     padding: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)',
@@ -592,11 +634,15 @@ const styles = StyleSheet.create({
   historyInfo: { flex: 1 },
   historyGame: { fontSize: 15, fontWeight: '800', color: '#fff' },
   historyMeta: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+  historyMetaActive: { color: '#2ecc71', fontWeight: '700' },
   historyWinner: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(243,156,18,0.15)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4,
   },
+  historyWinnerActive: { backgroundColor: 'rgba(46,204,113,0.15)' },
   historyWinnerName: { fontSize: 12, fontWeight: '700', color: '#f39c12' },
+  historyWinnerNameActive: { color: '#2ecc71' },
+  historyScoreLeader: { color: '#2ecc71' },
   deleteBtn: { padding: 4 },
   historyScores: { padding: 12, gap: 6 },
   historyScoreRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },

@@ -16,6 +16,7 @@ import {
   TarotContract,
   GameResult,
   PlayerResult,
+  PlayerScore,
   calcTarotDonne,
 } from '../../types';
 import { saveResult } from '../../storage/stats';
@@ -35,7 +36,7 @@ interface Props {
   players: Player[];
   onEnd: () => void;
   onGoHome: () => void;
-  onMeta: (leaderName: string, leaderScore: number) => void;
+  onMeta: (scores: PlayerScore[]) => void;
 }
 
 function getRunningTotal(playerId: string, donnes: TarotDonne[], playerIds: string[]): number {
@@ -59,11 +60,14 @@ export default function TarotGameScreen({ players, onEnd, onGoHome, onMeta }: Pr
     setDonnes(updatedDonnes);
     setEnteringDonne(false);
 
-    // Mettre à jour le leader
-    const sorted = [...players].sort(
-      (a, b) => getRunningTotal(b.id, updatedDonnes, playerIds) - getRunningTotal(a.id, updatedDonnes, playerIds)
-    );
-    onMeta(sorted[0].name, getRunningTotal(sorted[0].id, updatedDonnes, playerIds));
+    // Mettre à jour les scores pour l'accueil et les stats
+    onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: getRunningTotal(p.id, updatedDonnes, playerIds) })));
+  };
+
+  const handleUndoDonne = () => {
+    const updatedDonnes = donnes.slice(0, -1);
+    setDonnes(updatedDonnes);
+    onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: getRunningTotal(p.id, updatedDonnes, playerIds) })));
   };
 
   const handleEndGame = async () => {
@@ -269,6 +273,12 @@ export default function TarotGameScreen({ players, onEnd, onGoHome, onMeta }: Pr
 
       <View style={styles.footer}>
         {donnes.length > 0 && (
+          <TouchableOpacity style={styles.undoBtn} onPress={handleUndoDonne} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="undo" size={16} color="rgba(255,255,255,0.5)" />
+            <Text style={styles.undoBtnText}>Corriger la donne {donnes.length}</Text>
+          </TouchableOpacity>
+        )}
+        {donnes.length > 0 && (
           <TouchableOpacity
             style={styles.endButton}
             onPress={handleEndGame}
@@ -362,6 +372,13 @@ const styles = StyleSheet.create({
 
   // Footer
   footer: { padding: 16, paddingBottom: 28, gap: 10 },
+  undoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  undoBtnText: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
   nextButton: {
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
     gap: 10, backgroundColor: RED, borderRadius: 16, padding: 16,

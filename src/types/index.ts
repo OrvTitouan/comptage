@@ -1,4 +1,4 @@
-export type GameId = 'flip7' | 'papayoo' | 'farway' | 'skull-king' | 'tarot';
+export type GameId = 'flip7' | 'papayoo' | 'farway' | 'skull-king' | 'tarot' | '7wonders';
 
 export interface Game {
   id: GameId;
@@ -127,6 +127,8 @@ export interface TarotDonneScore {
   poignee: TarotPoignee | null;
   poigneeBy: 'preneur' | 'defense' | null;
   chelem: TarotChelemResult | null;
+  // À 5 joueurs seulement : null = seul (1c4), string = ID du partenaire (2c3)
+  partnerId?: string | null;
 }
 
 export interface TarotDonne {
@@ -169,12 +171,32 @@ export function calcTarotDonne(
   else if (chelem === 'non-annonce-reussi') unitScore += 200;
   else if (chelem === 'annonce-rate') unitScore -= 200;
 
-  // Distribution : preneur = (n-1) × unitScore, chaque défenseur = -unitScore
-  const nDefenders = playerIds.length - 1;
+  // Distribution des points
   const result: Record<string, number> = {};
-  playerIds.forEach((id) => {
-    result[id] = id === preneurId ? nDefenders * unitScore : -unitScore;
-  });
+
+  if (playerIds.length === 5 && 'partnerId' in score) {
+    const { partnerId } = score;
+    if (partnerId) {
+      // 2 contre 3 : preneur ×2, partenaire ×1, chaque défenseur ×-1
+      playerIds.forEach((id) => {
+        if (id === preneurId) result[id] = 2 * unitScore;
+        else if (id === partnerId) result[id] = unitScore;
+        else result[id] = -unitScore;
+      });
+    } else {
+      // 1 contre 4 (seul) : preneur ×4, chaque défenseur ×-1
+      playerIds.forEach((id) => {
+        result[id] = id === preneurId ? 4 * unitScore : -unitScore;
+      });
+    }
+  } else {
+    // 3 ou 4 joueurs : preneur = (n-1) × unitScore, chaque défenseur = -unitScore
+    const nDefenders = playerIds.length - 1;
+    playerIds.forEach((id) => {
+      result[id] = id === preneurId ? nDefenders * unitScore : -unitScore;
+    });
+  }
+
   return result;
 }
 
@@ -201,9 +223,10 @@ export interface PlayerScore {
   score: number;
 }
 
-export type GameScreenType = 'PapayooGame' | 'Flip7Game' | 'FarwayGame' | 'SkullKingGame' | 'TarotGame';
+export type GameScreenType = 'PapayooGame' | 'Flip7Game' | 'FarwayGame' | 'SkullKingGame' | 'TarotGame' | 'SevenWondersGame';
 
 export interface ActiveGameState {
+  id: string;
   screenType: GameScreenType;
   players: Player[];
   groupName?: string;

@@ -14,27 +14,27 @@ import { GAMES } from '../constants/games';
 import { Game, ActiveGameState } from '../types';
 
 interface HomeScreenProps {
-  activeGame: ActiveGameState | null;
+  activeGames: ActiveGameState[];
   onSelectGame: (game: Game) => void;
   onOpenProfiles: () => void;
   onOpenStats: () => void;
-  onResumeGame: () => void;
+  onResumeGame: (id: string) => void;
+  onAbandonGame: (id: string) => void;
+  onCloseGame: (id: string) => void;
 }
 
 type Tab = 'games' | 'active';
 
 export default function HomeScreen({
-  activeGame,
+  activeGames,
   onSelectGame,
   onOpenProfiles,
   onOpenStats,
   onResumeGame,
+  onAbandonGame,
+  onCloseGame,
 }: HomeScreenProps) {
   const [tab, setTab] = useState<Tab>('games');
-
-  const playersLabel = activeGame
-    ? activeGame.groupName ?? activeGame.players.map((p) => p.name).join(', ')
-    : '';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -43,7 +43,7 @@ export default function HomeScreen({
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerIcon}>
-            <MaterialCommunityIcons name="trophy" size={32} color="#f39c12" />
+            <MaterialCommunityIcons name="dice-multiple" size={32} color="#f39c12" />
           </View>
           <View style={styles.headerButtons}>
             <TouchableOpacity style={styles.headerButton} onPress={onOpenStats}>
@@ -54,7 +54,7 @@ export default function HomeScreen({
             </TouchableOpacity>
           </View>
         </View>
-        <Text style={styles.title}>Comptage Jeux</Text>
+        <Text style={styles.title}>Kounter</Text>
       </View>
 
       {/* Onglets */}
@@ -82,8 +82,10 @@ export default function HomeScreen({
               color={tab === 'active' ? '#fff' : 'rgba(255,255,255,0.4)'}
             />
             <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>En cours</Text>
-            {activeGame && (
-              <View style={styles.activeDot} />
+            {activeGames.length > 0 && (
+              <View style={styles.activeBadge}>
+                <Text style={styles.activeBadgeText}>{activeGames.length}</Text>
+              </View>
             )}
           </View>
         </TouchableOpacity>
@@ -108,54 +110,83 @@ export default function HomeScreen({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {activeGame ? (
+          {activeGames.length > 0 ? (
             <>
-              <Text style={styles.sectionLabel}>Partie en cours</Text>
-              <View style={[styles.activeCard, { borderLeftColor: activeGame.game.color }]}>
-                {/* Jeu */}
-                <View style={styles.activeCardHeader}>
-                  <View style={[styles.activeGameIcon, { backgroundColor: activeGame.game.color }]}>
-                    <MaterialCommunityIcons
-                      name={activeGame.game.icon as any}
-                      size={24}
-                      color="#fff"
-                    />
-                  </View>
-                  <View style={styles.activeCardInfo}>
-                    <Text style={styles.activeGameName}>{activeGame.game.name}</Text>
-                    <Text style={styles.activePlayersLabel} numberOfLines={1}>
-                      {playersLabel}
-                    </Text>
-                  </View>
-                </View>
+              <Text style={styles.sectionLabel}>
+                {activeGames.length} partie{activeGames.length > 1 ? 's' : ''} en cours
+              </Text>
+              {activeGames.map((ag) => {
+                const playersLabel = ag.groupName ?? ag.players.map((p) => p.name).join(', ');
+                return (
+                  <View key={ag.id} style={[styles.activeCard, { borderLeftColor: ag.game.color }]}>
+                    {/* Jeu + joueurs */}
+                    <View style={styles.activeCardHeader}>
+                      <View style={[styles.activeGameIcon, { backgroundColor: ag.game.color }]}>
+                        <MaterialCommunityIcons
+                          name={ag.game.icon as any}
+                          size={24}
+                          color="#fff"
+                        />
+                      </View>
+                      <View style={styles.activeCardInfo}>
+                        <Text style={styles.activeGameName}>{ag.game.name}</Text>
+                        <Text style={styles.activePlayersLabel} numberOfLines={1}>
+                          {playersLabel}
+                        </Text>
+                      </View>
+                    </View>
 
-                {/* Leader */}
-                <View style={styles.leaderRow}>
-                  <MaterialCommunityIcons name="crown" size={16} color="#f39c12" />
-                  {activeGame.leaderScore !== null ? (
-                    <Text style={styles.leaderText}>
-                      En tête :{' '}
-                      <Text style={styles.leaderName}>{activeGame.leaderName}</Text>
-                      {' — '}
-                      <Text style={styles.leaderScore}>
-                        {activeGame.leaderScore > 0 ? '+' : ''}{activeGame.leaderScore} pts
-                      </Text>
-                    </Text>
-                  ) : (
-                    <Text style={styles.leaderText}>Aucune manche jouée</Text>
-                  )}
-                </View>
+                    {/* Leader */}
+                    <View style={styles.leaderRow}>
+                      <MaterialCommunityIcons name="crown" size={16} color="#f39c12" />
+                      {ag.leaderScore !== null ? (
+                        <Text style={styles.leaderText}>
+                          En tête :{' '}
+                          <Text style={styles.leaderName}>{ag.leaderName}</Text>
+                          {' — '}
+                          <Text style={styles.leaderScore}>
+                            {ag.leaderScore > 0 ? '+' : ''}{ag.leaderScore} pts
+                          </Text>
+                        </Text>
+                      ) : (
+                        <Text style={styles.leaderText}>Aucune manche jouée</Text>
+                      )}
+                    </View>
 
-                {/* Bouton reprendre */}
-                <TouchableOpacity
-                  style={[styles.resumeButton, { backgroundColor: activeGame.game.color }]}
-                  onPress={onResumeGame}
-                  activeOpacity={0.85}
-                >
-                  <MaterialCommunityIcons name="play" size={20} color="#fff" />
-                  <Text style={styles.resumeButtonText}>Reprendre la partie</Text>
-                </TouchableOpacity>
-              </View>
+                    {/* Bouton reprendre */}
+                    <TouchableOpacity
+                      style={[styles.resumeButton, { backgroundColor: ag.game.color }]}
+                      onPress={() => onResumeGame(ag.id)}
+                      activeOpacity={0.85}
+                    >
+                      <MaterialCommunityIcons name="play" size={20} color="#fff" />
+                      <Text style={styles.resumeButtonText}>Reprendre</Text>
+                    </TouchableOpacity>
+
+                    {/* Actions secondaires */}
+                    <View style={styles.secondaryActions}>
+                      {ag.currentScores && ag.currentScores.length > 0 && (
+                        <TouchableOpacity
+                          style={styles.closeBtn}
+                          onPress={() => onCloseGame(ag.id)}
+                          activeOpacity={0.8}
+                        >
+                          <MaterialCommunityIcons name="flag-checkered" size={15} color="#f39c12" />
+                          <Text style={styles.closeBtnText}>Clôturer</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={styles.abandonBtn}
+                        onPress={() => onAbandonGame(ag.id)}
+                        activeOpacity={0.8}
+                      >
+                        <MaterialCommunityIcons name="trash-can-outline" size={15} color="rgba(231,76,60,0.8)" />
+                        <Text style={styles.abandonBtnText}>Annuler</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
             </>
           ) : (
             <View style={styles.emptyActive}>
@@ -249,12 +280,19 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#fff',
   },
-  activeDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+  activeBadge: {
     backgroundColor: '#2ecc71',
-    marginLeft: 2,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  activeBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -285,8 +323,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: 18,
     padding: 20,
-    gap: 16,
+    gap: 14,
     borderLeftWidth: 4,
+    marginBottom: 14,
   },
   activeCardHeader: {
     flexDirection: 'row',
@@ -340,13 +379,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderRadius: 14,
-    padding: 16,
+    padding: 14,
   },
   resumeButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '800',
   },
+  secondaryActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  closeBtn: {
+    flex: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: 12,
+    backgroundColor: 'rgba(243,156,18,0.1)',
+    borderWidth: 1, borderColor: 'rgba(243,156,18,0.25)',
+  },
+  closeBtnText: { fontSize: 13, fontWeight: '700', color: '#f39c12' },
+  abandonBtn: {
+    flex: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: 12,
+    backgroundColor: 'rgba(231,76,60,0.08)',
+    borderWidth: 1, borderColor: 'rgba(231,76,60,0.2)',
+  },
+  abandonBtnText: { fontSize: 13, fontWeight: '700', color: 'rgba(231,76,60,0.8)' },
+
   // Empty state
   emptyActive: {
     alignItems: 'center',

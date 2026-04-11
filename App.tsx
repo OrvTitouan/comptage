@@ -9,8 +9,10 @@ import Flip7GameScreen from './src/screens/flip7/Flip7GameScreen';
 import FarwayGameScreen from './src/screens/farway/FarwayGameScreen';
 import SkullKingGameScreen from './src/screens/skullking/SkullKingGameScreen';
 import TarotGameScreen from './src/screens/tarot/TarotGameScreen';
-import { Game, Player, GameId, ActiveGameState, GameScreenType, PlayerScore } from './src/types';
+import SevenWondersGameScreen from './src/screens/sevenwonders/SevenWondersGameScreen';
+import { Game, Player, GameId, ActiveGameState, GameScreenType, PlayerScore, GameResult } from './src/types';
 import { GAMES } from './src/constants/games';
+import { saveResult } from './src/storage/stats';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,62 +26,106 @@ type NavScreen =
 
 export default function App() {
   const [navScreen, setNavScreen] = useState<NavScreen>('Home');
-  const [activeGame, setActiveGame] = useState<ActiveGameState | null>(null);
-  const [showingGame, setShowingGame] = useState(false);
+  const [activeGames, setActiveGames] = useState<ActiveGameState[]>([]);
+  const [showingGameId, setShowingGameId] = useState<string | null>(null);
 
   // ── Helpers ────────────────────────────────────────────────────
 
   const goHome = () => {
-    setShowingGame(false);
+    setShowingGameId(null);
     setNavScreen('Home');
   };
 
-  const endGame = () => {
-    setActiveGame(null);
-    setShowingGame(false);
+  const endGame = (id: string) => {
+    setActiveGames((prev) => prev.filter((g) => g.id !== id));
+    setShowingGameId(null);
     setNavScreen('Home');
   };
 
-  const updateMeta = (scores: PlayerScore[]) => {
-    setActiveGame((prev) => {
-      if (!prev) return prev;
+  const updateMeta = (id: string, scores: PlayerScore[]) => {
+    setActiveGames((prev) => prev.map((g) => {
+      if (g.id !== id) return g;
       const sorted = [...scores].sort((a, b) =>
-        prev.game.id === 'papayoo' ? a.score - b.score : b.score - a.score
+        g.game.id === 'papayoo' ? a.score - b.score : b.score - a.score
       );
       return {
-        ...prev,
+        ...g,
         currentScores: scores,
-        leaderName: sorted[0]?.playerName ?? prev.leaderName,
-        leaderScore: sorted[0]?.score ?? prev.leaderScore,
+        leaderName: sorted[0]?.playerName ?? g.leaderName,
+        leaderScore: sorted[0]?.score ?? g.leaderScore,
       };
-    });
+    }));
   };
 
-  const handleSelectGame = (game: Game) => {
-    if (activeGame) {
-      const doStart = () => setNavScreen({ name: 'PlayerSetup', game });
-      if (Platform.OS === 'web') {
-        if (window.confirm('Une partie est en cours. L\'abandonner pour en commencer une nouvelle ?')) {
-          setActiveGame(null);
-          doStart();
-        }
-      } else {
-        Alert.alert(
-          'Partie en cours',
-          'Abandonner la partie en cours pour en commencer une nouvelle ?',
-          [
-            { text: 'Annuler', style: 'cancel' },
-            { text: 'Abandonner', style: 'destructive', onPress: () => { setActiveGame(null); doStart(); } },
-          ]
-        );
-      }
+  const removeGame = (id: string) => {
+    setActiveGames((prev) => prev.filter((g) => g.id !== id));
+    setShowingGameId((cur) => cur === id ? null : cur);
+    setNavScreen('Home');
+  };
+
+  const abandonGame = (id: string) => {
+    const doAbandon = () => removeGame(id);
+    if (Platform.OS === 'web') {
+      if (window.confirm('Abandonner cette partie ? Elle ne sera pas enregistrée.')) doAbandon();
     } else {
-      setNavScreen({ name: 'PlayerSetup', game });
+      Alert.alert(
+        'Abandonner la partie ?',
+        'Elle ne sera pas enregistrée.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Abandonner', style: 'destructive', onPress: doAbandon },
+        ]
+      );
     }
   };
 
-  const handleResumeGame = () => {
-    if (activeGame) setShowingGame(true);
+  const closeGame = (id: string) => {
+    const ag = activeGames.find((g) => g.id === id);
+    if (!ag?.currentScores || ag.currentScores.length === 0) return;
+
+    const doClose = async () => {
+      const isLowWins = ag.game.id === 'papayoo';
+      const sorted = [...ag.currentScores!].sort((a, b) =>
+        isLowWins ? a.score - b.score : b.score - a.score
+      );
+      const topScore = sorted[0].score;
+      const result: GameResult = {
+        id: Date.now().toString(),
+        gameId: ag.game.id,
+        gameName: ag.game.name,
+        date: new Date().toISOString(),
+        rounds: ag.totalRounds,
+        playerResults: ag.currentScores!.map((s) => ({
+          playerId: s.playerId,
+          playerName: s.playerName,
+          score: s.score,
+          winner: s.score === topScore,
+        })),
+      };
+      try { await saveResult(result); } catch {}
+      removeGame(id);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Clôturer la partie ? Les scores actuels seront enregistrés.')) doClose();
+    } else {
+      Alert.alert(
+        'Clôturer la partie ?',
+        'Les scores actuels seront enregistrés.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Clôturer', onPress: doClose },
+        ]
+      );
+    }
+  };
+
+  const handleSelectGame = (game: Game) => {
+    setNavScreen({ name: 'PlayerSetup', game });
+  };
+
+  const handleResumeGame = (id: string) => {
+    setShowingGameId(id);
   };
 
   const handleStart = (
@@ -88,14 +134,17 @@ export default function App() {
     totalRounds: number,
     groupName?: string,
   ) => {
+    const id = Date.now().toString();
     const gameToScreenType: Record<GameId, GameScreenType> = {
       papayoo: 'PapayooGame',
       flip7: 'Flip7Game',
       farway: 'FarwayGame',
       'skull-king': 'SkullKingGame',
       tarot: 'TarotGame',
+      '7wonders': 'SevenWondersGame',
     };
     const newGame: ActiveGameState = {
+      id,
       screenType: gameToScreenType[game.id],
       players,
       groupName,
@@ -105,19 +154,45 @@ export default function App() {
       leaderScore: null,
       currentScores: null,
     };
-    setActiveGame(newGame);
-    setShowingGame(true);
+    setActiveGames((prev) => [...prev, newGame]);
+    setShowingGameId(id);
     setNavScreen('Home');
   };
 
   // ── Render ─────────────────────────────────────────────────────
+
+  const renderGameScreen = (ag: ActiveGameState) => {
+    const { screenType, players, totalRounds } = ag;
+    const end = () => endGame(ag.id);
+    const meta = (scores: PlayerScore[]) => updateMeta(ag.id, scores);
+
+    if (screenType === 'SkullKingGame') {
+      return <SkullKingGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
+    if (screenType === 'PapayooGame') {
+      return <PapayooGameScreen players={players} totalRounds={totalRounds} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
+    if (screenType === 'Flip7Game') {
+      return <Flip7GameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
+    if (screenType === 'FarwayGame') {
+      return <FarwayGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
+    if (screenType === 'TarotGame') {
+      return <TarotGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
+    if (screenType === 'SevenWondersGame') {
+      return <SevenWondersGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
+    return null;
+  };
 
   const renderNavScreen = () => {
     if (navScreen === 'Profiles') {
       return <ProfilesScreen onBack={() => setNavScreen('Home')} />;
     }
     if (navScreen === 'Stats') {
-      return <StatsScreen onBack={() => setNavScreen('Home')} activeGame={activeGame} />;
+      return <StatsScreen onBack={() => setNavScreen('Home')} activeGames={activeGames} />;
     }
     if (typeof navScreen === 'object' && navScreen.name === 'PlayerSetup') {
       const game = navScreen.game;
@@ -134,86 +209,30 @@ export default function App() {
     // Home
     return (
       <HomeScreen
-        activeGame={activeGame}
+        activeGames={activeGames}
         onSelectGame={handleSelectGame}
         onOpenProfiles={() => setNavScreen('Profiles')}
         onOpenStats={() => setNavScreen('Stats')}
         onResumeGame={handleResumeGame}
+        onAbandonGame={abandonGame}
+        onCloseGame={closeGame}
       />
     );
   };
 
-  const renderActiveGameScreen = () => {
-    if (!activeGame) return null;
-    const { screenType, players, totalRounds, game } = activeGame;
-
-    if (screenType === 'SkullKingGame') {
-      return (
-        <SkullKingGameScreen
-          players={players}
-          onEnd={endGame}
-          onGoHome={goHome}
-          onMeta={updateMeta}
-        />
-      );
-    }
-    if (screenType === 'PapayooGame') {
-      return (
-        <PapayooGameScreen
-          players={players}
-          totalRounds={totalRounds}
-          onEnd={endGame}
-          onGoHome={goHome}
-          onMeta={updateMeta}
-        />
-      );
-    }
-    if (screenType === 'Flip7Game') {
-      return (
-        <Flip7GameScreen
-          players={players}
-          onEnd={endGame}
-          onGoHome={goHome}
-          onMeta={updateMeta}
-        />
-      );
-    }
-    if (screenType === 'FarwayGame') {
-      return (
-        <FarwayGameScreen
-          players={players}
-          onEnd={endGame}
-          onGoHome={goHome}
-          onMeta={updateMeta}
-        />
-      );
-    }
-    if (screenType === 'TarotGame') {
-      return (
-        <TarotGameScreen
-          players={players}
-          onEnd={endGame}
-          onGoHome={goHome}
-          onMeta={updateMeta}
-        />
-      );
-    }
-    return null;
-  };
-
   return (
     <View style={styles.root}>
-      {/* Couche navigation — toujours montée, masquée quand le jeu est affiché */}
-      <View style={[StyleSheet.absoluteFill, showingGame && styles.hidden]}>
+      {/* Couche navigation — masquée quand un jeu est affiché */}
+      <View style={[StyleSheet.absoluteFill, showingGameId !== null && styles.hidden]}>
         {renderNavScreen()}
       </View>
 
-      {/* Couche jeu — montée quand un jeu est actif, masquée quand on est à l'accueil */}
-      {activeGame && (
-        <View style={[StyleSheet.absoluteFill, !showingGame && styles.hidden]}>
-          {renderActiveGameScreen()}
+      {/* Une couche par partie active — seule la partie sélectionnée est visible */}
+      {activeGames.map((ag) => (
+        <View key={ag.id} style={[StyleSheet.absoluteFill, showingGameId !== ag.id && styles.hidden]}>
+          {renderGameScreen(ag)}
         </View>
-      )}
+      ))}
     </View>
   );
 }
