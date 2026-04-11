@@ -1,10 +1,11 @@
-export type GameId = 'flip7' | 'papayoo' | 'farway' | 'skull-king' | 'tarot' | '7wonders';
+export type GameId = 'flip7' | 'papayoo' | 'farway' | 'skull-king' | 'tarot' | '7wonders' | 'skyjo';
 
 export interface Game {
   id: GameId;
   name: string;
   description: string;
   icon: string;
+  image?: any; // local require() image
   color: string;
   accentColor: string;
   minPlayers: number;
@@ -223,7 +224,7 @@ export interface PlayerScore {
   score: number;
 }
 
-export type GameScreenType = 'PapayooGame' | 'Flip7Game' | 'FarwayGame' | 'SkullKingGame' | 'TarotGame' | 'SevenWondersGame';
+export type GameScreenType = 'PapayooGame' | 'Flip7Game' | 'FarwayGame' | 'SkullKingGame' | 'TarotGame' | 'SevenWondersGame' | 'SkyjoGame';
 
 export interface ActiveGameState {
   id: string;

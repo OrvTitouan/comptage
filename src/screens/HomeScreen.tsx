@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,14 @@ import {
   ScrollView,
   StatusBar,
   TouchableOpacity,
+  Image,
+  TextInput,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import GameCard from '../components/GameCard';
 import { GAMES } from '../constants/games';
 import { Game, ActiveGameState } from '../types';
+import { loadFavorites, toggleFavorite } from '../storage/favorites';
 
 interface HomeScreenProps {
   activeGames: ActiveGameState[];
@@ -35,6 +38,34 @@ export default function HomeScreen({
   onCloseGame,
 }: HomeScreenProps) {
   const [tab, setTab] = useState<Tab>('games');
+  const [search, setSearch] = useState('');
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadFavorites().then(setFavorites);
+  }, []);
+
+  const handleToggleFavorite = async (id: string) => {
+    const next = await toggleFavorite(id);
+    setFavorites(next);
+  };
+
+  const displayedGames = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? GAMES.filter((g) => g.name.toLowerCase().includes(q))
+      : GAMES;
+
+    return [...filtered].sort((a, b) => {
+      const aFav = favorites.includes(a.id) ? 0 : 1;
+      const bFav = favorites.includes(b.id) ? 0 : 1;
+      return aFav - bFav;
+    });
+  }, [search, favorites]);
+
+  const favCount = displayedGames.filter((g) => favorites.includes(g.id)).length;
+  const nonFavGames = displayedGames.filter((g) => !favorites.includes(g.id));
+  const favGames = displayedGames.filter((g) => favorites.includes(g.id));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -54,7 +85,7 @@ export default function HomeScreen({
             </TouchableOpacity>
           </View>
         </View>
-        <Text style={styles.title}>Kounter</Text>
+        <Text style={styles.title}>Boardscore</Text>
       </View>
 
       {/* Onglets */}
@@ -92,19 +123,90 @@ export default function HomeScreen({
       </View>
 
       {tab === 'games' ? (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.sectionLabel}>Jeux disponibles</Text>
-          {GAMES.map((game) => (
-            <GameCard key={game.id} game={game} onPress={onSelectGame} />
-          ))}
-          <View style={styles.footer}>
-            <MaterialCommunityIcons name="cards" size={18} color="rgba(255,255,255,0.3)" />
-            <Text style={styles.footerText}>  {GAMES.length} jeux disponibles</Text>
+        <>
+          {/* Barre de recherche */}
+          <View style={styles.searchContainer}>
+            <MaterialCommunityIcons name="magnify" size={20} color="rgba(255,255,255,0.4)" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Rechercher un jeu..."
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <MaterialCommunityIcons name="close-circle" size={18} color="rgba(255,255,255,0.35)" />
+              </TouchableOpacity>
+            )}
           </View>
-        </ScrollView>
+
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {displayedGames.length === 0 ? (
+              <View style={styles.emptySearch}>
+                <MaterialCommunityIcons name="magnify-close" size={48} color="rgba(255,255,255,0.1)" />
+                <Text style={styles.emptySearchText}>Aucun jeu trouvé</Text>
+                <Text style={styles.emptySearchSub}>Essayez un autre nom</Text>
+              </View>
+            ) : (
+              <>
+                {/* Favoris */}
+                {favGames.length > 0 && (
+                  <>
+                    <View style={styles.sectionRow}>
+                      <MaterialCommunityIcons name="star" size={13} color="#f39c12" />
+                      <Text style={styles.sectionLabel}>Favoris</Text>
+                    </View>
+                    {favGames.map((game) => (
+                      <GameCard
+                        key={game.id}
+                        game={game}
+                        onPress={onSelectGame}
+                        isFavorite
+                        onToggleFavorite={handleToggleFavorite}
+                      />
+                    ))}
+                  </>
+                )}
+
+                {/* Autres jeux */}
+                {nonFavGames.length > 0 && (
+                  <>
+                    <View style={styles.sectionRow}>
+                      <MaterialCommunityIcons name="cards-playing-outline" size={13} color="rgba(255,255,255,0.4)" />
+                      <Text style={styles.sectionLabel}>
+                        {favGames.length > 0 ? 'Tous les jeux' : 'Jeux disponibles'}
+                      </Text>
+                    </View>
+                    {nonFavGames.map((game) => (
+                      <GameCard
+                        key={game.id}
+                        game={game}
+                        onPress={onSelectGame}
+                        isFavorite={false}
+                        onToggleFavorite={handleToggleFavorite}
+                      />
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+
+            <View style={styles.footer}>
+              <MaterialCommunityIcons name="cards" size={18} color="rgba(255,255,255,0.3)" />
+              <Text style={styles.footerText}>
+                {'  '}{GAMES.length} jeux disponibles
+                {favorites.length > 0 ? ` · ${favorites.length} favori${favorites.length > 1 ? 's' : ''}` : ''}
+              </Text>
+            </View>
+          </ScrollView>
+        </>
       ) : (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -122,11 +224,11 @@ export default function HomeScreen({
                     {/* Jeu + joueurs */}
                     <View style={styles.activeCardHeader}>
                       <View style={[styles.activeGameIcon, { backgroundColor: ag.game.color }]}>
-                        <MaterialCommunityIcons
-                          name={ag.game.icon as any}
-                          size={24}
-                          color="#fff"
-                        />
+                        {ag.game.image ? (
+                          <Image source={ag.game.image} style={styles.activeGameImage} resizeMode="contain" />
+                        ) : (
+                          <MaterialCommunityIcons name={ag.game.icon as any} size={24} color="#fff" />
+                        )}
                       </View>
                       <View style={styles.activeCardInfo}>
                         <Text style={styles.activeGameName}>{ag.game.name}</Text>
@@ -294,18 +396,46 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
   },
+
+  // Recherche
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 24,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    padding: 0,
+  },
+
   scrollContent: {
     paddingHorizontal: 24,
     paddingBottom: 32,
   },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+    marginTop: 8,
+  },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 1.2,
+    letterSpacing: 1.1,
     textTransform: 'uppercase',
-    marginBottom: 16,
-    marginTop: 8,
   },
   footer: {
     flexDirection: 'row',
@@ -318,6 +448,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255,255,255,0.3)',
   },
+
+  // Empty search
+  emptySearch: {
+    alignItems: 'center',
+    paddingTop: 60,
+    gap: 12,
+  },
+  emptySearchText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.25)',
+  },
+  emptySearchSub: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.15)',
+  },
+
   // Active game card
   activeCard: {
     backgroundColor: 'rgba(255,255,255,0.07)',
@@ -338,6 +485,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  activeGameImage: {
+    width: 52,
+    height: 52,
   },
   activeCardInfo: {
     flex: 1,

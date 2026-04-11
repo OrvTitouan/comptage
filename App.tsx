@@ -10,6 +10,7 @@ import FarwayGameScreen from './src/screens/farway/FarwayGameScreen';
 import SkullKingGameScreen from './src/screens/skullking/SkullKingGameScreen';
 import TarotGameScreen from './src/screens/tarot/TarotGameScreen';
 import SevenWondersGameScreen from './src/screens/sevenwonders/SevenWondersGameScreen';
+import SkyjoGameScreen from './src/screens/skyjo/SkyjoGameScreen';
 import { Game, Player, GameId, ActiveGameState, GameScreenType, PlayerScore, GameResult } from './src/types';
 import { GAMES } from './src/constants/games';
 import { saveResult } from './src/storage/stats';
@@ -45,8 +46,9 @@ export default function App() {
   const updateMeta = (id: string, scores: PlayerScore[]) => {
     setActiveGames((prev) => prev.map((g) => {
       if (g.id !== id) return g;
+      const lowWins = g.game.id === 'papayoo' || g.game.id === 'skyjo';
       const sorted = [...scores].sort((a, b) =>
-        g.game.id === 'papayoo' ? a.score - b.score : b.score - a.score
+        lowWins ? a.score - b.score : b.score - a.score
       );
       return {
         ...g,
@@ -142,6 +144,7 @@ export default function App() {
       'skull-king': 'SkullKingGame',
       tarot: 'TarotGame',
       '7wonders': 'SevenWondersGame',
+      'skyjo': 'SkyjoGame',
     };
     const newGame: ActiveGameState = {
       id,
@@ -183,6 +186,9 @@ export default function App() {
     }
     if (screenType === 'SevenWondersGame') {
       return <SevenWondersGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
+    if (screenType === 'SkyjoGame') {
+      return <SkyjoGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
     }
     return null;
   };

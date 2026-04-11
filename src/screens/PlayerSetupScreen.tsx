@@ -148,7 +148,7 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         {/* Nombre de manches (masqué pour Flip 7 et Farway) */}
-        {game.id !== 'flip7' && game.id !== 'farway' && game.id !== 'skull-king' && game.id !== 'tarot' && game.id !== '7wonders' && (
+        {game.id !== 'flip7' && game.id !== 'farway' && game.id !== 'skull-king' && game.id !== 'tarot' && game.id !== '7wonders' && game.id !== 'skyjo' && (
           <>
             <Text style={styles.sectionLabel}>Nombre de manches</Text>
             <View style={styles.roundsRow}>
