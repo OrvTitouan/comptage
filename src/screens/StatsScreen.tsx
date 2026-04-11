@@ -31,6 +31,7 @@ const GAME_COLORS: Record<GameId, string> = {
   papayoo: '#f39c12',
   'skull-king': '#2980b9',
   farway: '#27ae60',
+  tarot: '#c0392b',
 };
 
 const GAME_ICONS: Record<GameId, string> = {
@@ -38,6 +39,7 @@ const GAME_ICONS: Record<GameId, string> = {
   papayoo: 'cards-playing',
   'skull-king': 'skull-crossbones',
   farway: 'map-search-outline',
+  tarot: 'cards-heart',
 };
 
 const GROUP_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#e91e63'];

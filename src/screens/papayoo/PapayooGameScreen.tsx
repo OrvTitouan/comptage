@@ -18,6 +18,8 @@ interface PapayooGameScreenProps {
   players: Player[];
   totalRounds: number;
   onEnd: () => void;
+  onGoHome: () => void;
+  onMeta: (leaderName: string, leaderScore: number) => void;
 }
 
 function getTotalScore(playerId: string, rounds: PapayooRound[]): number {
@@ -28,7 +30,7 @@ function getTotalScore(playerId: string, rounds: PapayooRound[]): number {
   }, 0);
 }
 
-export default function PapayooGameScreen({ players, totalRounds, onEnd }: PapayooGameScreenProps) {
+export default function PapayooGameScreen({ players, totalRounds, onEnd, onGoHome, onMeta }: PapayooGameScreenProps) {
   const [rounds, setRounds] = useState<PapayooRound[]>([]);
   const [enteringRound, setEnteringRound] = useState(false);
 
@@ -36,12 +38,15 @@ export default function PapayooGameScreen({ players, totalRounds, onEnd }: Papay
   const isFinished = rounds.length >= totalRounds;
 
   const handleValidateRound = (scores: PapayooRoundScore[]) => {
-    const newRound: PapayooRound = {
-      roundNumber: currentRound,
-      scores,
-    };
-    setRounds((prev) => [...prev, newRound]);
+    const newRound: PapayooRound = { roundNumber: currentRound, scores };
+    const updatedRounds = [...rounds, newRound];
+    setRounds(updatedRounds);
     setEnteringRound(false);
+    // Leader = joueur avec le moins de points (Papayoo : score bas = bon)
+    const sorted = [...players].sort(
+      (a, b) => getTotalScore(a.id, updatedRounds) - getTotalScore(b.id, updatedRounds)
+    );
+    onMeta(sorted[0].name, getTotalScore(sorted[0].id, updatedRounds));
   };
 
   const handleEndGame = () => {
@@ -96,7 +101,7 @@ export default function PapayooGameScreen({ players, totalRounds, onEnd }: Papay
       <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={onEnd} style={styles.backButton}>
+        <TouchableOpacity onPress={onGoHome} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>

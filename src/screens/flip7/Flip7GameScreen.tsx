@@ -17,6 +17,8 @@ import { saveResult } from '../../storage/stats';
 interface Flip7GameScreenProps {
   players: Player[];
   onEnd: () => void;
+  onGoHome: () => void;
+  onMeta: (leaderName: string, leaderScore: number) => void;
 }
 
 function getTotalScore(playerId: string, rounds: Flip7Round[]): number {
@@ -26,7 +28,7 @@ function getTotalScore(playerId: string, rounds: Flip7Round[]): number {
   }, 0);
 }
 
-export default function Flip7GameScreen({ players, onEnd }: Flip7GameScreenProps) {
+export default function Flip7GameScreen({ players, onEnd, onGoHome, onMeta }: Flip7GameScreenProps) {
   const [rounds, setRounds] = useState<Flip7Round[]>([]);
   const [enteringRound, setEnteringRound] = useState(false);
 
@@ -37,6 +39,11 @@ export default function Flip7GameScreen({ players, onEnd }: Flip7GameScreenProps
     const updatedRounds = [...rounds, newRound];
     setRounds(updatedRounds);
     setEnteringRound(false);
+    // Mettre à jour le leader
+    const sorted = [...players].sort(
+      (a, b) => getTotalScore(b.id, updatedRounds) - getTotalScore(a.id, updatedRounds)
+    );
+    onMeta(sorted[0].name, getTotalScore(sorted[0].id, updatedRounds));
 
     // Vérifier si un joueur a atteint 200 pts
     const winner = players.find(
@@ -93,7 +100,7 @@ export default function Flip7GameScreen({ players, onEnd }: Flip7GameScreenProps
       <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={onEnd} style={styles.backButton}>
+        <TouchableOpacity onPress={onGoHome} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>

@@ -17,7 +17,7 @@ import { loadGroups } from '../storage/groups';
 interface PlayerSetupScreenProps {
   game: Game;
   onBack: () => void;
-  onStart: (players: Player[], totalRounds: number) => void;
+  onStart: (players: Player[], totalRounds: number, groupName?: string) => void;
 }
 
 const ROUND_OPTIONS = [3, 5, 10];
@@ -81,7 +81,7 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
       const players: Player[] = profiles
         .filter((p) => group.memberIds.includes(p.id))
         .map((p) => ({ id: p.id, name: p.name }));
-      onStart(players, totalRounds);
+      onStart(players, totalRounds, group.name);
     } else {
       if (selectedIds.size < game.minPlayers) {
         Alert.alert(
@@ -93,7 +93,7 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
       const players: Player[] = profiles
         .filter((p) => selectedIds.has(p.id))
         .map((p) => ({ id: p.id, name: p.name }));
-      onStart(players, totalRounds);
+      onStart(players, totalRounds, undefined);
     }
   };
 
@@ -148,7 +148,7 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         {/* Nombre de manches (masqué pour Flip 7 et Farway) */}
-        {game.id !== 'flip7' && game.id !== 'farway' && game.id !== 'skull-king' && (
+        {game.id !== 'flip7' && game.id !== 'farway' && game.id !== 'skull-king' && game.id !== 'tarot' && (
           <>
             <Text style={styles.sectionLabel}>Nombre de manches</Text>
             <View style={styles.roundsRow}>

@@ -32,6 +32,16 @@ export const GAMES: Game[] = [
     maxPlayers: 6,
   },
   {
+    id: 'tarot',
+    name: 'Tarot',
+    description: 'Prenez, défendez, remportez les plis !',
+    icon: 'cards-heart',
+    color: '#c0392b',
+    accentColor: '#922b21',
+    minPlayers: 3,
+    maxPlayers: 5,
+  },
+  {
     id: 'farway',
     name: 'Farway',
     description: 'Explorez des régions et trouvez des sanctuaires !',

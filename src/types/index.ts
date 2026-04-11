@@ -1,4 +1,4 @@
-export type GameId = 'flip7' | 'papayoo' | 'farway' | 'skull-king';
+export type GameId = 'flip7' | 'papayoo' | 'farway' | 'skull-king' | 'tarot';
 
 export interface Game {
   id: GameId;
@@ -113,6 +113,71 @@ export function calcSkullKingRoundScore(score: SkullKingRoundScore, roundNumber:
   return -Math.abs(bid - tricks) * 10;
 }
 
+// Tarot
+export type TarotContract = 'prise' | 'garde' | 'garde-sans' | 'garde-contre';
+export type TarotPoignee = 'simple' | 'double' | 'triple';
+export type TarotChelemResult = 'annonce-reussi' | 'non-annonce-reussi' | 'annonce-rate';
+
+export interface TarotDonneScore {
+  preneurId: string;
+  contract: TarotContract;
+  bouts: 0 | 1 | 2 | 3;
+  points: number;                        // points réalisés par le preneur (0-91)
+  petitAuBout: 'preneur' | 'defense' | null;
+  poignee: TarotPoignee | null;
+  poigneeBy: 'preneur' | 'defense' | null;
+  chelem: TarotChelemResult | null;
+}
+
+export interface TarotDonne {
+  donneNumber: number;
+  score: TarotDonneScore;
+}
+
+export function calcTarotDonne(
+  score: TarotDonneScore,
+  playerIds: string[],
+): Record<string, number> {
+  const { preneurId, contract, bouts, points, petitAuBout, poignee, chelem } = score;
+
+  const seuils: Record<number, number> = { 0: 56, 1: 51, 2: 41, 3: 36 };
+  const multiplicateurs: Record<TarotContract, number> = {
+    prise: 1, garde: 2, 'garde-sans': 4, 'garde-contre': 6,
+  };
+
+  const seuil = seuils[bouts];
+  const mult = multiplicateurs[contract];
+  const gain = points - seuil;
+  const won = gain >= 0;
+  const scoreBrut = (Math.abs(gain) + 25) * mult;
+
+  // Score de base (positif = preneur gagne)
+  let unitScore = scoreBrut * (won ? 1 : -1);
+
+  // Petit au bout (×multiplicateur, indépendant du résultat)
+  if (petitAuBout === 'preneur') unitScore += 10 * mult;
+  else if (petitAuBout === 'defense') unitScore -= 10 * mult;
+
+  // Poignée : va au camp gagnant
+  if (poignee) {
+    const poigneeValues: Record<TarotPoignee, number> = { simple: 20, double: 30, triple: 40 };
+    unitScore += won ? poigneeValues[poignee] : -poigneeValues[poignee];
+  }
+
+  // Chelem
+  if (chelem === 'annonce-reussi') unitScore += 400;
+  else if (chelem === 'non-annonce-reussi') unitScore += 200;
+  else if (chelem === 'annonce-rate') unitScore -= 200;
+
+  // Distribution : preneur = (n-1) × unitScore, chaque défenseur = -unitScore
+  const nDefenders = playerIds.length - 1;
+  const result: Record<string, number> = {};
+  playerIds.forEach((id) => {
+    result[id] = id === preneurId ? nDefenders * unitScore : -unitScore;
+  });
+  return result;
+}
+
 // Statistiques
 export interface PlayerResult {
   playerId: string;
@@ -128,6 +193,25 @@ export interface GameResult {
   date: string; // ISO
   rounds: number;
   playerResults: PlayerResult[];
+}
+
+export interface PlayerScore {
+  playerId: string;
+  playerName: string;
+  score: number;
+}
+
+export type GameScreenType = 'PapayooGame' | 'Flip7Game' | 'FarwayGame' | 'SkullKingGame' | 'TarotGame';
+
+export interface ActiveGameState {
+  screenType: GameScreenType;
+  players: Player[];
+  groupName?: string;
+  totalRounds: number;
+  game: Game;
+  leaderName: string;
+  leaderScore: number | null;
+  currentScores: PlayerScore[] | null;
 }
 
 export type Screen =

@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  Alert,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -24,13 +23,15 @@ const GREEN_DARK = '#27ae60';
 interface FarwayGameScreenProps {
   players: Player[];
   onEnd: () => void;
+  onGoHome: () => void;
+  onMeta: (leaderName: string, leaderScore: number) => void;
 }
 
 function initInputs(players: Player[]) {
   return Object.fromEntries(players.map((p) => [p.id, '']));
 }
 
-export default function FarwayGameScreen({ players, onEnd }: FarwayGameScreenProps) {
+export default function FarwayGameScreen({ players, onEnd, onGoHome, onMeta }: FarwayGameScreenProps) {
   const [totals, setTotals] = useState<Record<string, number>>(
     Object.fromEntries(players.map((p) => [p.id, 0]))
   );
@@ -46,13 +47,6 @@ export default function FarwayGameScreen({ players, onEnd }: FarwayGameScreenPro
     (a, b) => (totals[b.id] ?? 0) - (totals[a.id] ?? 0)
   );
 
-  const confirmQuit = () => {
-    Alert.alert('Quitter ?', 'La partie sera abandonnée et non sauvegardée.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Quitter', style: 'destructive', onPress: onEnd },
-    ]);
-  };
-
   const handleValidate = async () => {
     const hasEmpty = players.some((p) => inputs[p.id].trim() === '');
     if (hasEmpty) {
@@ -65,6 +59,9 @@ export default function FarwayGameScreen({ players, onEnd }: FarwayGameScreenPro
       newTotals[p.id] = (newTotals[p.id] ?? 0) + (parseInt(inputs[p.id]) || 0);
     });
     setTotals(newTotals);
+    // Mettre à jour le leader
+    const leader = [...players].sort((a, b) => (newTotals[b.id] ?? 0) - (newTotals[a.id] ?? 0))[0];
+    onMeta(leader.name, newTotals[leader.id] ?? 0);
 
     if (isSanctuaires) {
       const withTotals = players.map((p) => ({
@@ -105,7 +102,7 @@ export default function FarwayGameScreen({ players, onEnd }: FarwayGameScreenPro
 
   const handleBack = () => {
     if (scoringRound === 1) {
-      confirmQuit();
+      onGoHome();
     } else {
       setScoringRound((r) => r - 1);
       setInputs(initInputs(players));
