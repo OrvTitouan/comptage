@@ -26,6 +26,14 @@ export async function deleteResult(id: string): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(results.filter((r) => r.id !== id)));
 }
 
+export async function updateResultComment(id: string, comment: string): Promise<void> {
+  const results = await loadResults();
+  const updated = results.map((r) =>
+    r.id === id ? { ...r, comment: comment.trim() || undefined } : r
+  );
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+}
+
 export async function importResults(incoming: GameResult[]): Promise<GameResult[]> {
   const existing = await loadResults();
   const existingIds = new Set(existing.map((r) => r.id));

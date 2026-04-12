@@ -20,11 +20,20 @@ import { loadGroups } from '../storage/groups';
 interface PlayerSetupScreenProps {
   game: Game;
   onBack: () => void;
-  onStart: (players: Player[], totalRounds: number, groupName?: string) => void;
+  onStart: (players: Player[], totalRounds: number, groupName?: string, customGameName?: string) => void;
 }
 
 const ROUND_OPTIONS = [3, 5, 10];
 type Tab = 'joueurs' | 'groupes';
+
+const PAPAYOO_DEAL: Record<number, { cards: number; exchange: number; note?: string }> = {
+  3: { cards: 20, exchange: 5 },
+  4: { cards: 15, exchange: 5 },
+  5: { cards: 12, exchange: 4 },
+  6: { cards: 10, exchange: 3 },
+  7: { cards: 8,  exchange: 3, note: '*' },
+  8: { cards: 7,  exchange: 3, note: '*' },
+};
 
 export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetupScreenProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -33,6 +42,9 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [totalRounds, setTotalRounds] = useState(5);
   const [tab, setTab] = useState<Tab>('joueurs');
+
+  // Nom personnalisé (mode classic)
+  const [customGameName, setCustomGameName] = useState('');
 
   // Création rapide de joueur
   const [showNewPlayer, setShowNewPlayer] = useState(false);
@@ -53,15 +65,8 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
   const togglePlayer = (profile: Profile) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(profile.id)) {
-        next.delete(profile.id);
-      } else {
-        if (next.size >= game.maxPlayers) {
-          Alert.alert('Maximum atteint', `Ce jeu accepte ${game.maxPlayers} joueurs maximum.`);
-          return prev;
-        }
-        next.add(profile.id);
-      }
+      if (next.has(profile.id)) next.delete(profile.id);
+      else next.add(profile.id);
       return next;
     });
   };
@@ -70,11 +75,8 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
     const trimmed = newPlayerName.trim();
     if (!trimmed) return;
     const newProfile = await addProfile(trimmed);
-    const updated = await reload();
-    // Auto-sélectionner si pas encore au max
-    if (selectedIds.size < game.maxPlayers) {
-      setSelectedIds((prev) => new Set([...prev, newProfile.id]));
-    }
+    await reload();
+    setSelectedIds((prev) => new Set([...prev, newProfile.id]));
     setNewPlayerName('');
     setShowNewPlayer(false);
   };
@@ -85,14 +87,6 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
   };
 
   const selectGroup = (group: Group) => {
-    if (group.memberIds.length < game.minPlayers) {
-      Alert.alert('Groupe trop petit', `Il en faut au moins ${game.minPlayers} pour jouer à ${game.name}.`);
-      return;
-    }
-    if (group.memberIds.length > game.maxPlayers) {
-      Alert.alert('Groupe trop grand', `${game.name} accepte ${game.maxPlayers} joueurs maximum.`);
-      return;
-    }
     setSelectedGroupId(group.id);
   };
 
@@ -106,24 +100,24 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
       const players: Player[] = profiles
         .filter((p) => group.memberIds.includes(p.id))
         .map((p) => ({ id: p.id, name: p.name }));
-      onStart(players, totalRounds, group.name);
+      onStart(players, totalRounds, group.name, customGameName || undefined);
     } else {
-      if (selectedIds.size < game.minPlayers) {
-        Alert.alert('Pas assez de joueurs', `Il faut au moins ${game.minPlayers} joueurs pour jouer à ${game.name}.`);
+      if (selectedIds.size < 1) {
+        Alert.alert('Aucun joueur', 'Sélectionnez au moins un joueur pour lancer la partie.');
         return;
       }
       const players: Player[] = profiles
         .filter((p) => selectedIds.has(p.id))
         .map((p) => ({ id: p.id, name: p.name }));
-      onStart(players, totalRounds, undefined);
+      onStart(players, totalRounds, undefined, customGameName || undefined);
     }
   };
 
   const getGroupMemberNames = (group: Group) =>
     profiles.filter((p) => group.memberIds.includes(p.id)).map((p) => p.name).join(', ');
 
-  const isGroupCompatible = (group: Group) =>
-    group.memberIds.length >= game.minPlayers && group.memberIds.length <= game.maxPlayers;
+  const isOutOfRange = (group: Group) =>
+    group.memberIds.length < game.minPlayers || group.memberIds.length > game.maxPlayers;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -158,8 +152,24 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
+          {/* Nom du jeu — mode classic uniquement */}
+          {game.id === 'classic' && (
+            <>
+              <Text style={styles.sectionLabel}>Nom du jeu</Text>
+              <TextInput
+                style={styles.classicNameInput}
+                value={customGameName}
+                onChangeText={setCustomGameName}
+                placeholder="Ex : Uno, Rummikub…"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                autoCapitalize="words"
+                returnKeyType="done"
+              />
+            </>
+          )}
+
           {/* Nombre de manches */}
-          {game.id !== 'flip7' && game.id !== 'farway' && game.id !== 'skull-king' && game.id !== 'tarot' && game.id !== '7wonders' && game.id !== 'skyjo' && game.id !== 'catan' && (
+          {game.id !== 'flip7' && game.id !== 'farway' && game.id !== 'skull-king' && game.id !== 'tarot' && game.id !== '7wonders' && game.id !== 'skyjo' && game.id !== 'catan' && game.id !== 'classic' && game.id !== '6quiprend' && (
             <>
               <Text style={styles.sectionLabel}>Nombre de manches</Text>
               <View style={styles.roundsRow}>
@@ -179,7 +189,7 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
           {tab === 'joueurs' ? (
             <>
               <Text style={styles.sectionLabel}>
-                Joueurs ({selectedIds.size}/{game.maxPlayers})
+                Joueurs ({selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''} · conseillé {game.minPlayers}–{game.maxPlayers})
               </Text>
 
               {profiles.length === 0 && !showNewPlayer ? (
@@ -246,6 +256,41 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
                   <Text style={styles.addPlayerBtnText}>Créer un nouveau joueur</Text>
                 </TouchableOpacity>
               )}
+
+              {/* Info distribution Papayoo */}
+              {game.id === 'papayoo' && (() => {
+                const n = selectedIds.size;
+                const info = PAPAYOO_DEAL[n];
+                return (
+                  <View style={styles.dealInfo}>
+                    <View style={styles.dealInfoHeader}>
+                      <MaterialCommunityIcons name="cards-playing-outline" size={16} color="#f39c12" />
+                      <Text style={styles.dealInfoTitle}>Distribution</Text>
+                    </View>
+                    {info ? (
+                      <View style={styles.dealInfoBody}>
+                        <View style={styles.dealInfoRow}>
+                          <Text style={styles.dealInfoLabel}>Cartes distribuées</Text>
+                          <Text style={styles.dealInfoValue}>
+                            {info.cards}{info.note ?? ''} cartes
+                          </Text>
+                        </View>
+                        <View style={styles.dealInfoRow}>
+                          <Text style={styles.dealInfoLabel}>Cartes à échanger</Text>
+                          <Text style={styles.dealInfoValue}>{info.exchange} cartes</Text>
+                        </View>
+                        {info.note && (
+                          <Text style={styles.dealInfoNote}>* Retirez au préalable quelques cartes du jeu</Text>
+                        )}
+                      </View>
+                    ) : (
+                      <Text style={styles.dealInfoEmpty}>
+                        Sélectionnez entre 3 et 8 joueurs
+                      </Text>
+                    )}
+                  </View>
+                );
+              })()}
             </>
           ) : (
             <>
@@ -259,11 +304,11 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
               ) : (
                 groups.map((group) => {
                   const selected = selectedGroupId === group.id;
-                  const compatible = isGroupCompatible(group);
+                  const outOfRange = isOutOfRange(group);
                   return (
                     <TouchableOpacity
                       key={group.id}
-                      style={[styles.groupCard, selected && styles.groupCardSelected, !compatible && styles.groupCardDisabled]}
+                      style={[styles.groupCard, selected && styles.groupCardSelected]}
                       onPress={() => selectGroup(group)}
                       activeOpacity={0.8}
                     >
@@ -272,13 +317,13 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
                           <MaterialCommunityIcons name="account-group" size={22} color={selected ? '#fff' : 'rgba(255,255,255,0.6)'} />
                         </View>
                         <View style={styles.groupInfo}>
-                          <Text style={[styles.groupName, !compatible && styles.groupNameDisabled]}>{group.name}</Text>
+                          <Text style={styles.groupName}>{group.name}</Text>
                           <Text style={styles.groupMembers}>
                             {group.memberIds.length} joueur{group.memberIds.length > 1 ? 's' : ''} · {getGroupMemberNames(group)}
                           </Text>
-                          {!compatible && (
+                          {outOfRange && (
                             <Text style={styles.groupWarning}>
-                              {group.memberIds.length < game.minPlayers ? `Min. ${game.minPlayers} joueurs requis` : `Max. ${game.maxPlayers} joueurs`}
+                              Hors du nombre conseillé ({game.minPlayers}–{game.maxPlayers})
                             </Text>
                           )}
                         </View>
@@ -389,6 +434,52 @@ const styles = StyleSheet.create({
   },
   newPlayerConfirmDisabled: { opacity: 0.4 },
   newPlayerConfirmText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+  // Classic name input
+  classicNameInput: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    padding: 14,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: 4,
+  },
+
+  // Info distribution Papayoo
+  dealInfo: {
+    marginTop: 16,
+    backgroundColor: 'rgba(243,156,18,0.08)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(243,156,18,0.2)',
+    padding: 14,
+    gap: 10,
+  },
+  dealInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dealInfoTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#f39c12',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  dealInfoBody: { gap: 8 },
+  dealInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dealInfoLabel: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
+  dealInfoValue: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  dealInfoNote: { fontSize: 11, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic', marginTop: 2 },
+  dealInfoEmpty: { fontSize: 13, color: 'rgba(255,255,255,0.3)', textAlign: 'center', paddingVertical: 4 },
 
   // Groupes
   groupCard: {

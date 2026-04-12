@@ -12,6 +12,8 @@ import TarotGameScreen from './src/screens/tarot/TarotGameScreen';
 import SevenWondersGameScreen from './src/screens/sevenwonders/SevenWondersGameScreen';
 import SkyjoGameScreen from './src/screens/skyjo/SkyjoGameScreen';
 import CatanGameScreen from './src/screens/catan/CatanGameScreen';
+import ClassicGameScreen from './src/screens/classic/ClassicGameScreen';
+import SixQuiPrendGameScreen from './src/screens/sixquiprend/SixQuiPrendGameScreen';
 import { Game, Player, GameId, ActiveGameState, GameScreenType, PlayerScore, GameResult } from './src/types';
 import { GAMES } from './src/constants/games';
 import { saveResult } from './src/storage/stats';
@@ -47,7 +49,7 @@ export default function App() {
   const updateMeta = (id: string, scores: PlayerScore[]) => {
     setActiveGames((prev) => prev.map((g) => {
       if (g.id !== id) return g;
-      const lowWins = g.game.id === 'papayoo' || g.game.id === 'skyjo';
+      const lowWins = g.game.id === 'papayoo' || g.game.id === 'skyjo' || g.game.id === '6quiprend';
       const sorted = [...scores].sort((a, b) =>
         lowWins ? a.score - b.score : b.score - a.score
       );
@@ -136,6 +138,7 @@ export default function App() {
     players: Player[],
     totalRounds: number,
     groupName?: string,
+    customGameName?: string,
   ) => {
     const id = Date.now().toString();
     const gameToScreenType: Record<GameId, GameScreenType> = {
@@ -147,14 +150,17 @@ export default function App() {
       '7wonders': 'SevenWondersGame',
       'skyjo': 'SkyjoGame',
       'catan': 'CatanGame',
+      'classic': 'ClassicGame',
+      '6quiprend': 'SixQuiPrendGame',
     };
+    const effectiveGame = customGameName ? { ...game, name: customGameName } : game;
     const newGame: ActiveGameState = {
       id,
       screenType: gameToScreenType[game.id],
       players,
       groupName,
       totalRounds,
-      game,
+      game: effectiveGame,
       leaderName: players[0]?.name ?? '',
       leaderScore: null,
       currentScores: null,
@@ -195,6 +201,12 @@ export default function App() {
     if (screenType === 'CatanGame') {
       return <CatanGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
     }
+    if (screenType === 'ClassicGame') {
+      return <ClassicGameScreen players={players} gameName={ag.game.name} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
+    if (screenType === 'SixQuiPrendGame') {
+      return <SixQuiPrendGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
     return null;
   };
 
@@ -211,8 +223,8 @@ export default function App() {
         <PlayerSetupScreen
           game={game}
           onBack={() => setNavScreen('Home')}
-          onStart={(players, totalRounds, groupName) =>
-            handleStart(game, players, totalRounds, groupName)
+          onStart={(players, totalRounds, groupName, customGameName) =>
+            handleStart(game, players, totalRounds, groupName, customGameName)
           }
         />
       );

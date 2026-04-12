@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { GameResult, GameId, Group, ActiveGameState } from '../types';
-import { loadResults, computeStats, PlayerStats, deleteResult, importResults } from '../storage/stats';
+import { loadResults, computeStats, PlayerStats, deleteResult, importResults, updateResultComment } from '../storage/stats';
 import { loadGroups } from '../storage/groups';
 import { GAMES } from '../constants/games';
 
@@ -59,6 +59,8 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
   const [gameFilter, setGameFilter] = useState<GameId | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importText, setImportText] = useState('');
+  const [commentResultId, setCommentResultId] = useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = useState('');
 
   const reload = async () => {
     const [r, g] = await Promise.all([loadResults(), loadGroups()]);
@@ -133,6 +135,18 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
         },
       ]);
     }
+  };
+
+  const openComment = (result: GameResult) => {
+    setCommentDraft(result.comment ?? '');
+    setCommentResultId(result.id);
+  };
+
+  const saveComment = async () => {
+    if (!commentResultId) return;
+    await updateResultComment(commentResultId, commentDraft);
+    setCommentResultId(null);
+    await reload();
   };
 
   const handleExport = async () => {
@@ -445,6 +459,19 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
                       )}
                       {!isActive && (
                         <TouchableOpacity
+                          style={styles.commentBtn}
+                          onPress={() => openComment(result)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <MaterialCommunityIcons
+                            name={result.comment ? 'comment-text' : 'comment-plus-outline'}
+                            size={18}
+                            color={result.comment ? '#3498db' : 'rgba(255,255,255,0.3)'}
+                          />
+                        </TouchableOpacity>
+                      )}
+                      {!isActive && (
+                        <TouchableOpacity
                           style={styles.deleteBtn}
                           onPress={() => handleDelete(result)}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -463,6 +490,16 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
                           </Text>
                         </View>
                       ))}
+                      {result.comment ? (
+                        <TouchableOpacity
+                          style={styles.commentBubble}
+                          onPress={() => !isActive && openComment(result)}
+                          activeOpacity={isActive ? 1 : 0.7}
+                        >
+                          <MaterialCommunityIcons name="comment-text-outline" size={13} color="#3498db" />
+                          <Text style={styles.commentText}>{result.comment}</Text>
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
                   </View>
                 );
@@ -471,6 +508,32 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
           </>
         )}
       </ScrollView>
+
+      {/* Modal commentaire */}
+      <Modal visible={!!commentResultId} transparent animationType="slide" onRequestClose={() => setCommentResultId(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Commentaire</Text>
+            <TextInput
+              style={[styles.modalInput, { height: 120, textAlignVertical: 'top', fontSize: 15 }]}
+              multiline
+              placeholder="Ajouter un commentaire sur cette partie…"
+              placeholderTextColor="rgba(255,255,255,0.25)"
+              value={commentDraft}
+              onChangeText={setCommentDraft}
+              autoFocus
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setCommentResultId(null)}>
+                <Text style={styles.modalBtnText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnConfirm]} onPress={saveComment}>
+                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Enregistrer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal import natif */}
       <Modal visible={showImportModal} transparent animationType="slide" onRequestClose={() => setShowImportModal(false)}>
@@ -643,7 +706,27 @@ const styles = StyleSheet.create({
   historyWinnerName: { fontSize: 12, fontWeight: '700', color: '#f39c12' },
   historyWinnerNameActive: { color: '#2ecc71' },
   historyScoreLeader: { color: '#2ecc71' },
+  commentBtn: { padding: 4 },
   deleteBtn: { padding: 4 },
+  commentBubble: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: 6,
+    backgroundColor: 'rgba(52,152,219,0.08)',
+    borderRadius: 10,
+    borderLeftWidth: 2,
+    borderLeftColor: '#3498db',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  commentText: {
+    flex: 1,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.65)',
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
   historyScores: { padding: 12, gap: 6 },
   historyScoreRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
   historyRank: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.3)', width: 24 },
