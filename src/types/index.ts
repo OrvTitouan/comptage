@@ -28,6 +28,12 @@ export interface Player {
   name: string;
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  memberIds: string[];
+}
+
 // Papayoo
 export interface PapayooRoundScore {
   playerId: string;
@@ -237,6 +243,7 @@ export interface ActiveGameState {
   leaderName: string;
   leaderScore: number | null;
   currentScores: PlayerScore[] | null;
+  teams?: Team[];
 }
 
 export type Screen =

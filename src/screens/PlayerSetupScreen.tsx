@@ -13,18 +13,20 @@ import {
   Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Game, Group, Player, Profile } from '../types';
+import { Game, Group, Player, Profile, Team } from '../types';
 import { loadProfiles, addProfile } from '../storage/profiles';
 import { loadGroups } from '../storage/groups';
+import { loadCustomGameNames, saveCustomGameName, deleteCustomGameName } from '../storage/customGames';
 
 interface PlayerSetupScreenProps {
   game: Game;
   onBack: () => void;
-  onStart: (players: Player[], totalRounds: number, groupName?: string, customGameName?: string) => void;
+  onStart: (players: Player[], totalRounds: number, groupName?: string, customGameName?: string, teams?: Team[]) => void;
 }
 
 const ROUND_OPTIONS = [3, 5, 10];
 type Tab = 'joueurs' | 'groupes';
+const TEAM_COLORS = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
 
 const PAPAYOO_DEAL: Record<number, { cards: number; exchange: number; note?: string }> = {
   3: { cards: 20, exchange: 5 },
@@ -45,6 +47,15 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
 
   // Nom personnalisé (mode classic)
   const [customGameName, setCustomGameName] = useState('');
+  const [savedGameNames, setSavedGameNames] = useState<string[]>([]);
+
+  // Équipes (mode classic)
+  const [teamsEnabled, setTeamsEnabled] = useState(false);
+  const [teamDefs, setTeamDefs] = useState([
+    { id: 't1', name: 'Équipe 1' },
+    { id: 't2', name: 'Équipe 2' },
+  ]);
+  const [playerTeam, setPlayerTeam] = useState<Record<string, string>>({});
 
   // Création rapide de joueur
   const [showNewPlayer, setShowNewPlayer] = useState(false);
@@ -60,6 +71,7 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
   useEffect(() => {
     reload();
     loadGroups().then(setGroups);
+    if (game.id === 'classic') loadCustomGameNames().then(setSavedGameNames);
   }, []);
 
   const togglePlayer = (profile: Profile) => {
@@ -86,11 +98,53 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
     setTimeout(() => newPlayerInputRef.current?.focus(), 100);
   };
 
+  // ── Équipes ──────────────────────────────────────────────────────
+
+  const enableTeams = () => {
+    const selected = Array.from(selectedIds);
+    const assignments: Record<string, string> = {};
+    selected.forEach((id, i) => { assignments[id] = teamDefs[i % teamDefs.length].id; });
+    setPlayerTeam(assignments);
+    setTeamsEnabled(true);
+  };
+
+  const disableTeams = () => { setTeamsEnabled(false); setPlayerTeam({}); };
+
+  const cyclePlayerTeam = (playerId: string) => {
+    const currentIdx = teamDefs.findIndex((t) => t.id === playerTeam[playerId]);
+    const nextIdx = (currentIdx + 1) % teamDefs.length;
+    setPlayerTeam((prev) => ({ ...prev, [playerId]: teamDefs[nextIdx].id }));
+  };
+
+  const addTeam = () => {
+    if (teamDefs.length >= 5) return;
+    const newId = `t${Date.now()}`;
+    setTeamDefs((prev) => [...prev, { id: newId, name: `Équipe ${prev.length + 1}` }]);
+  };
+
+  const removeLastTeam = () => {
+    if (teamDefs.length <= 2) return;
+    const lastId = teamDefs[teamDefs.length - 1].id;
+    setPlayerTeam((prev) => {
+      const next = { ...prev };
+      for (const pid of Object.keys(next)) {
+        if (next[pid] === lastId) next[pid] = teamDefs[0].id;
+      }
+      return next;
+    });
+    setTeamDefs((prev) => prev.slice(0, -1));
+  };
+
   const selectGroup = (group: Group) => {
     setSelectedGroupId(group.id);
   };
 
   const handleStart = () => {
+    // Sauvegarder le nom si mode classic
+    if (game.id === 'classic' && customGameName.trim()) {
+      saveCustomGameName(customGameName.trim()).then(setSavedGameNames);
+    }
+
     if (tab === 'groupes') {
       if (!selectedGroupId) {
         Alert.alert('Aucun groupe sélectionné', 'Choisissez un groupe pour lancer la partie.');
@@ -109,7 +163,23 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
       const players: Player[] = profiles
         .filter((p) => selectedIds.has(p.id))
         .map((p) => ({ id: p.id, name: p.name }));
-      onStart(players, totalRounds, undefined, customGameName || undefined);
+      if (teamsEnabled) {
+        const unassigned = Array.from(selectedIds).filter((id) => !playerTeam[id]);
+        if (unassigned.length > 0) {
+          Alert.alert('Joueurs non assignés', 'Tous les joueurs doivent être dans une équipe.');
+          return;
+        }
+        const teams: Team[] = teamDefs
+          .map((td) => ({
+            id: td.id,
+            name: td.name,
+            memberIds: Array.from(selectedIds).filter((id) => playerTeam[id] === td.id),
+          }))
+          .filter((t) => t.memberIds.length > 0);
+        onStart(players, totalRounds, undefined, customGameName || undefined, teams);
+      } else {
+        onStart(players, totalRounds, undefined, customGameName || undefined);
+      }
     }
   };
 
@@ -165,6 +235,27 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
                 autoCapitalize="words"
                 returnKeyType="done"
               />
+              {savedGameNames.length > 0 && (
+                <View style={styles.savedNamesRow}>
+                  {savedGameNames.map((name) => (
+                    <View key={name} style={styles.savedNameChip}>
+                      <TouchableOpacity
+                        onPress={() => setCustomGameName(name)}
+                        activeOpacity={0.7}
+                        style={styles.savedNameChipInner}
+                      >
+                        <Text style={styles.savedNameText}>{name}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => deleteCustomGameName(name).then(setSavedGameNames)}
+                        hitSlop={{ top: 6, bottom: 6, left: 4, right: 6 }}
+                      >
+                        <MaterialCommunityIcons name="close" size={13} color="rgba(255,255,255,0.3)" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
             </>
           )}
 
@@ -255,6 +346,85 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
                   <MaterialCommunityIcons name="account-plus-outline" size={20} color="rgba(255,255,255,0.5)" />
                   <Text style={styles.addPlayerBtnText}>Créer un nouveau joueur</Text>
                 </TouchableOpacity>
+              )}
+
+              {/* Toggle équipes (classic uniquement) */}
+              {game.id === 'classic' && selectedIds.size >= 2 && (
+                <TouchableOpacity
+                  style={[styles.teamsToggle, teamsEnabled && styles.teamsToggleActive]}
+                  onPress={() => teamsEnabled ? disableTeams() : enableTeams()}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons
+                    name="account-group"
+                    size={18}
+                    color={teamsEnabled ? '#fff' : 'rgba(255,255,255,0.5)'}
+                  />
+                  <Text style={[styles.teamsToggleText, teamsEnabled && styles.teamsToggleTextActive]}>
+                    Jouer en équipes
+                  </Text>
+                  <View style={[styles.toggleTrack, teamsEnabled && styles.toggleTrackOn]}>
+                    <View style={[styles.toggleThumb, teamsEnabled && styles.toggleThumbOn]} />
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* Configurateur d'équipes */}
+              {game.id === 'classic' && teamsEnabled && selectedIds.size >= 2 && (
+                <View style={styles.teamsSection}>
+                  <Text style={styles.teamsSectionLabel}>Équipes</Text>
+                  {teamDefs.map((team, idx) => {
+                    const color = TEAM_COLORS[idx % TEAM_COLORS.length];
+                    return (
+                      <View key={team.id} style={styles.teamDefRow}>
+                        <View style={[styles.teamColorDot, { backgroundColor: color }]} />
+                        <TextInput
+                          style={styles.teamNameInput}
+                          value={team.name}
+                          onChangeText={(text) =>
+                            setTeamDefs((prev) => prev.map((t) => t.id === team.id ? { ...t, name: text } : t))
+                          }
+                          placeholderTextColor="rgba(255,255,255,0.3)"
+                          selectTextOnFocus
+                        />
+                        {teamDefs.length > 2 && idx === teamDefs.length - 1 && (
+                          <TouchableOpacity onPress={removeLastTeam} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <MaterialCommunityIcons name="close" size={18} color="rgba(255,255,255,0.3)" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    );
+                  })}
+                  {teamDefs.length < 5 && (
+                    <TouchableOpacity style={styles.addTeamBtn} onPress={addTeam}>
+                      <MaterialCommunityIcons name="plus" size={15} color="rgba(255,255,255,0.5)" />
+                      <Text style={styles.addTeamBtnText}>Ajouter une équipe</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <Text style={[styles.teamsSectionLabel, { marginTop: 14 }]}>Assignation</Text>
+                  {Array.from(selectedIds).map((id) => {
+                    const profile = profiles.find((p) => p.id === id);
+                    if (!profile) return null;
+                    const teamId = playerTeam[id];
+                    const teamIdx = teamDefs.findIndex((t) => t.id === teamId);
+                    const color = teamIdx >= 0 ? TEAM_COLORS[teamIdx % TEAM_COLORS.length] : 'rgba(255,255,255,0.2)';
+                    const teamName = teamIdx >= 0 ? teamDefs[teamIdx].name : '—';
+                    return (
+                      <View key={id} style={styles.assignRow}>
+                        <Text style={styles.assignPlayerName} numberOfLines={1}>{profile.name}</Text>
+                        <TouchableOpacity
+                          style={[styles.assignBadge, { backgroundColor: color + '22', borderColor: color }]}
+                          onPress={() => cyclePlayerTeam(id)}
+                        >
+                          <View style={[styles.assignDot, { backgroundColor: color }]} />
+                          <Text style={[styles.assignBadgeText, { color }]}>{teamName}</Text>
+                          <MaterialCommunityIcons name="chevron-right" size={14} color={color} />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
               )}
 
               {/* Info distribution Papayoo */}
@@ -435,7 +605,7 @@ const styles = StyleSheet.create({
   newPlayerConfirmDisabled: { opacity: 0.4 },
   newPlayerConfirmText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 
-  // Classic name input
+  // Classic — nom du jeu + historique
   classicNameInput: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 12,
@@ -445,8 +615,81 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: 8,
+  },
+  savedNamesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 4,
   },
+  savedNameChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  savedNameChipInner: { flexShrink: 1 },
+  savedNameText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+  },
+
+  // Équipes
+  teamsToggle: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, marginTop: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  teamsToggleActive: { backgroundColor: 'rgba(52,152,219,0.12)', borderColor: '#3498db' },
+  teamsToggleText: { flex: 1, fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.5)' },
+  teamsToggleTextActive: { color: '#fff' },
+  toggleTrack: {
+    width: 36, height: 20, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', padding: 2,
+  },
+  toggleTrackOn: { backgroundColor: '#3498db' },
+  toggleThumb: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#fff', alignSelf: 'flex-start' },
+  toggleThumbOn: { alignSelf: 'flex-end' },
+  teamsSection: {
+    backgroundColor: 'rgba(52,152,219,0.06)', borderRadius: 16,
+    borderWidth: 1, borderColor: 'rgba(52,152,219,0.2)',
+    padding: 14, marginTop: 10, gap: 8,
+  },
+  teamsSectionLabel: {
+    fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.35)',
+    textTransform: 'uppercase', letterSpacing: 1,
+  },
+  teamDefRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  teamColorDot: { width: 12, height: 12, borderRadius: 6 },
+  teamNameInput: {
+    flex: 1, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8, color: '#fff', fontSize: 15, fontWeight: '700',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  addTeamBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderStyle: 'dashed',
+    alignSelf: 'flex-start',
+  },
+  addTeamBtnText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.4)' },
+  assignRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 },
+  assignPlayerName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#fff' },
+  assignBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1.5,
+  },
+  assignDot: { width: 8, height: 8, borderRadius: 4 },
+  assignBadgeText: { fontSize: 13, fontWeight: '700' },
 
   // Info distribution Papayoo
   dealInfo: {

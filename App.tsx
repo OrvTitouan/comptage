@@ -14,7 +14,7 @@ import SkyjoGameScreen from './src/screens/skyjo/SkyjoGameScreen';
 import CatanGameScreen from './src/screens/catan/CatanGameScreen';
 import ClassicGameScreen from './src/screens/classic/ClassicGameScreen';
 import SixQuiPrendGameScreen from './src/screens/sixquiprend/SixQuiPrendGameScreen';
-import { Game, Player, GameId, ActiveGameState, GameScreenType, PlayerScore, GameResult } from './src/types';
+import { Game, Player, GameId, ActiveGameState, GameScreenType, PlayerScore, GameResult, Team } from './src/types';
 import { GAMES } from './src/constants/games';
 import { saveResult } from './src/storage/stats';
 
@@ -139,6 +139,7 @@ export default function App() {
     totalRounds: number,
     groupName?: string,
     customGameName?: string,
+    teams?: Team[],
   ) => {
     const id = Date.now().toString();
     const gameToScreenType: Record<GameId, GameScreenType> = {
@@ -164,6 +165,7 @@ export default function App() {
       leaderName: players[0]?.name ?? '',
       leaderScore: null,
       currentScores: null,
+      teams,
     };
     setActiveGames((prev) => [...prev, newGame]);
     setShowingGameId(id);
@@ -202,7 +204,7 @@ export default function App() {
       return <CatanGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
     }
     if (screenType === 'ClassicGame') {
-      return <ClassicGameScreen players={players} gameName={ag.game.name} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+      return <ClassicGameScreen players={players} gameName={ag.game.name} teams={ag.teams} onEnd={end} onGoHome={goHome} onMeta={meta} />;
     }
     if (screenType === 'SixQuiPrendGame') {
       return <SixQuiPrendGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
@@ -223,8 +225,8 @@ export default function App() {
         <PlayerSetupScreen
           game={game}
           onBack={() => setNavScreen('Home')}
-          onStart={(players, totalRounds, groupName, customGameName) =>
-            handleStart(game, players, totalRounds, groupName, customGameName)
+          onStart={(players, totalRounds, groupName, customGameName, teams) =>
+            handleStart(game, players, totalRounds, groupName, customGameName, teams)
           }
         />
       );
