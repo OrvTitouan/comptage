@@ -32,7 +32,7 @@ export const GAMES: Game[] = [
     color: '#2980b9',
     accentColor: '#1a5276',
     minPlayers: 2,
-    maxPlayers: 6,
+    maxPlayers: 8,
   },
   {
     id: 'tarot',

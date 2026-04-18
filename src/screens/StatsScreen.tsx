@@ -33,6 +33,12 @@ const GAME_COLORS: Record<GameId, string> = {
   'skull-king': '#2980b9',
   farway: '#27ae60',
   tarot: '#c0392b',
+  '7wonders': '#7D3C98',
+  skyjo: '#00ACC1',
+  catan: '#e67e22',
+  classic: '#546e7a',
+  '6quiprend': '#c0392b',
+  ligretto: '#e53935',
 };
 
 const GAME_ICONS: Record<GameId, string> = {
@@ -41,6 +47,12 @@ const GAME_ICONS: Record<GameId, string> = {
   'skull-king': 'skull-crossbones',
   farway: 'map-search-outline',
   tarot: 'cards-heart',
+  '7wonders': 'pillar',
+  skyjo: 'card-multiple-outline',
+  catan: 'hexagon-multiple',
+  classic: 'counter',
+  '6quiprend': 'cow',
+  ligretto: 'cards-playing-outline',
 };
 
 const GROUP_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#e91e63'];
@@ -646,9 +658,9 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#fff' },
 
   // Filtre jeux
-  gameFilterScroll: { maxHeight: 44 },
+  gameFilterScroll: { maxHeight: 56 },
   gameFilterContent: {
-    paddingHorizontal: 20, paddingBottom: 8, gap: 8, alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 6, gap: 8, alignItems: 'center',
   },
   gameFilterPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
