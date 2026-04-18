@@ -40,7 +40,29 @@ export default function App() {
     setNavScreen('Home');
   };
 
-  const endGame = (id: string) => {
+  const endGame = async (id: string) => {
+    const ag = activeGames.find((g) => g.id === id);
+    if (ag?.currentScores && ag.currentScores.length > 0) {
+      const isLowWins = ag.game.id === 'papayoo' || ag.game.id === 'skyjo' || ag.game.id === '6quiprend';
+      const sorted = [...ag.currentScores].sort((a, b) =>
+        isLowWins ? a.score - b.score : b.score - a.score
+      );
+      const topScore = sorted[0].score;
+      const result: GameResult = {
+        id: Date.now().toString(),
+        gameId: ag.game.id,
+        gameName: ag.game.name,
+        date: new Date().toISOString(),
+        rounds: ag.totalRounds,
+        playerResults: ag.currentScores.map((s) => ({
+          playerId: s.playerId,
+          playerName: s.playerName,
+          score: s.score,
+          winner: s.score === topScore,
+        })),
+      };
+      try { await saveResult(result); } catch {}
+    }
     setActiveGames((prev) => prev.filter((g) => g.id !== id));
     setShowingGameId(null);
     setNavScreen('Home');
@@ -89,7 +111,7 @@ export default function App() {
     if (!ag?.currentScores || ag.currentScores.length === 0) return;
 
     const doClose = async () => {
-      const isLowWins = ag.game.id === 'papayoo';
+      const isLowWins = ag.game.id === 'papayoo' || ag.game.id === 'skyjo' || ag.game.id === '6quiprend';
       const sorted = [...ag.currentScores!].sort((a, b) =>
         isLowWins ? a.score - b.score : b.score - a.score
       );
