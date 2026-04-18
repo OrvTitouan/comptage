@@ -79,6 +79,17 @@ export const GAMES: Game[] = [
     maxPlayers: 10,
   },
   {
+    id: 'ligretto',
+    name: 'Ligretto',
+    description: 'Marquez des points chaque manche — le premier à 99 gagne !',
+    icon: 'cards-playing-outline',
+    image: require('../../image/ligretto.png'),
+    color: '#e53935',
+    accentColor: '#b71c1c',
+    minPlayers: 2,
+    maxPlayers: 4,
+  },
+  {
     id: 'classic',
     name: 'Compteur classique',
     description: 'Compteur de points universel pour n\'importe quel jeu.',

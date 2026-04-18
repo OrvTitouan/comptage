@@ -84,10 +84,23 @@ export default function PapayooRoundScreen({
 
       {/* Indicateur total */}
       <View style={styles.totalBar}>
-        <Text style={styles.totalLabel}>Total Payoos saisis</Text>
-        <Text style={[styles.totalValue, totalPayoo > 210 && styles.totalValueError]}>
-          {totalPayoo} / 210
-        </Text>
+        <View>
+          <Text style={styles.totalLabel}>Total Payoos saisis</Text>
+          <Text style={[styles.totalValue, totalPayoo > 210 && styles.totalValueError]}>
+            {totalPayoo} / 210
+          </Text>
+        </View>
+        <View style={styles.remainingBox}>
+          <Text style={styles.remainingLabel}>Il reste</Text>
+          <Text style={[
+            styles.remainingValue,
+            totalPayoo === 210 ? styles.remainingDone :
+            totalPayoo > 210 ? styles.remainingError :
+            styles.remainingPending,
+          ]}>
+            {210 - totalPayoo} pts
+          </Text>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -206,6 +219,27 @@ const styles = StyleSheet.create({
     color: '#f39c12',
   },
   totalValueError: {
+    color: '#e74c3c',
+  },
+  remainingBox: {
+    alignItems: 'flex-end',
+  },
+  remainingLabel: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '600',
+  },
+  remainingValue: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  remainingPending: {
+    color: '#f39c12',
+  },
+  remainingDone: {
+    color: '#2ecc71',
+  },
+  remainingError: {
     color: '#e74c3c',
   },
   scrollContent: {

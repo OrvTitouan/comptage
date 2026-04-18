@@ -17,6 +17,7 @@ import { Game, Group, Player, Profile, Team } from '../types';
 import { loadProfiles, addProfile } from '../storage/profiles';
 import { loadGroups } from '../storage/groups';
 import { loadCustomGameNames, saveCustomGameName, deleteCustomGameName } from '../storage/customGames';
+import { loadResults } from '../storage/stats';
 
 interface PlayerSetupScreenProps {
   game: Game;
@@ -57,6 +58,10 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
   ]);
   const [playerTeam, setPlayerTeam] = useState<Record<string, string>>({});
 
+  // Recherche + tri par fréquence
+  const [search, setSearch] = useState('');
+  const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
+
   // Création rapide de joueur
   const [showNewPlayer, setShowNewPlayer] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState('');
@@ -72,6 +77,16 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
     reload();
     loadGroups().then(setGroups);
     if (game.id === 'classic') loadCustomGameNames().then(setSavedGameNames);
+    // Compter le nombre de parties jouées par joueur pour le tri
+    loadResults().then((results) => {
+      const counts: Record<string, number> = {};
+      for (const r of results) {
+        for (const pr of r.playerResults) {
+          counts[pr.playerId] = (counts[pr.playerId] ?? 0) + 1;
+        }
+      }
+      setPlayCounts(counts);
+    });
   }, []);
 
   const togglePlayer = (profile: Profile) => {
@@ -260,7 +275,7 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
           )}
 
           {/* Nombre de manches */}
-          {game.id !== 'flip7' && game.id !== 'farway' && game.id !== 'skull-king' && game.id !== 'tarot' && game.id !== '7wonders' && game.id !== 'skyjo' && game.id !== 'catan' && game.id !== 'classic' && game.id !== '6quiprend' && (
+          {game.id !== 'flip7' && game.id !== 'farway' && game.id !== 'skull-king' && game.id !== 'tarot' && game.id !== '7wonders' && game.id !== 'skyjo' && game.id !== 'catan' && game.id !== 'classic' && game.id !== '6quiprend' && game.id !== 'ligretto' && (
             <>
               <Text style={styles.sectionLabel}>Nombre de manches</Text>
               <View style={styles.roundsRow}>
@@ -283,13 +298,46 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
                 Joueurs ({selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''} · conseillé {game.minPlayers}–{game.maxPlayers})
               </Text>
 
-              {profiles.length === 0 && !showNewPlayer ? (
-                <View style={styles.empty}>
-                  <MaterialCommunityIcons name="account-off" size={48} color="rgba(255,255,255,0.2)" />
-                  <Text style={styles.emptyText}>Aucun profil disponible</Text>
+              {/* Barre de recherche */}
+              {profiles.length > 0 && (
+                <View style={styles.searchBar}>
+                  <MaterialCommunityIcons name="magnify" size={18} color="rgba(255,255,255,0.35)" />
+                  <TextInput
+                    style={styles.searchInput}
+                    value={search}
+                    onChangeText={setSearch}
+                    placeholder="Rechercher un joueur…"
+                    placeholderTextColor="rgba(255,255,255,0.25)"
+                    autoCapitalize="none"
+                    returnKeyType="search"
+                  />
+                  {search.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <MaterialCommunityIcons name="close-circle" size={16} color="rgba(255,255,255,0.3)" />
+                    </TouchableOpacity>
+                  )}
                 </View>
-              ) : (
-                profiles.map((profile) => {
+              )}
+
+              {(() => {
+                // Tri : sélectionnés en premier, puis par fréquence de jeu desc
+                const filtered = profiles
+                  .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+                  .sort((a, b) => {
+                    const aSelected = selectedIds.has(a.id) ? 1 : 0;
+                    const bSelected = selectedIds.has(b.id) ? 1 : 0;
+                    if (aSelected !== bSelected) return bSelected - aSelected;
+                    return (playCounts[b.id] ?? 0) - (playCounts[a.id] ?? 0);
+                  });
+
+                if (filtered.length === 0 && !showNewPlayer) return (
+                  <View style={styles.empty}>
+                    <MaterialCommunityIcons name="account-search-outline" size={48} color="rgba(255,255,255,0.2)" />
+                    <Text style={styles.emptyText}>{profiles.length === 0 ? 'Aucun profil disponible' : 'Aucun résultat'}</Text>
+                  </View>
+                );
+
+                return filtered.map((profile) => {
                   const selected = selectedIds.has(profile.id);
                   return (
                     <TouchableOpacity
@@ -307,8 +355,8 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
                       {selected && <MaterialCommunityIcons name="check-circle" size={24} color="#f39c12" />}
                     </TouchableOpacity>
                   );
-                })
-              )}
+                });
+              })()}
 
               {/* Formulaire création rapide */}
               {showNewPlayer ? (
@@ -545,6 +593,13 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.4)' },
   tabTextActive: { color: '#fff' },
   scrollContent: { paddingHorizontal: 24, paddingBottom: 32 },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 10,
+    marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  searchInput: { flex: 1, color: '#fff', fontSize: 15, padding: 0 },
   sectionLabel: {
     fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.4)',
     letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12, marginTop: 24,

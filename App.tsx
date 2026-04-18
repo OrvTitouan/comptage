@@ -14,6 +14,7 @@ import SkyjoGameScreen from './src/screens/skyjo/SkyjoGameScreen';
 import CatanGameScreen from './src/screens/catan/CatanGameScreen';
 import ClassicGameScreen from './src/screens/classic/ClassicGameScreen';
 import SixQuiPrendGameScreen from './src/screens/sixquiprend/SixQuiPrendGameScreen';
+import LigrettoGameScreen from './src/screens/ligretto/LigrettoGameScreen';
 import { Game, Player, GameId, ActiveGameState, GameScreenType, PlayerScore, GameResult, Team } from './src/types';
 import { GAMES } from './src/constants/games';
 import { saveResult } from './src/storage/stats';
@@ -175,6 +176,7 @@ export default function App() {
       'catan': 'CatanGame',
       'classic': 'ClassicGame',
       '6quiprend': 'SixQuiPrendGame',
+      'ligretto': 'LigrettoGame',
     };
     const effectiveGame = customGameName ? { ...game, name: customGameName } : game;
     const newGame: ActiveGameState = {
@@ -230,6 +232,9 @@ export default function App() {
     }
     if (screenType === 'SixQuiPrendGame') {
       return <SixQuiPrendGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+    }
+    if (screenType === 'LigrettoGame') {
+      return <LigrettoGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
     }
     return null;
   };
