@@ -79,42 +79,35 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
 
   // ── Photo de profil ──────────────────────────────────────────
 
-  const handlePickPhoto = async (profile: Profile) => {
-    const pick = async (useCamera: boolean) => {
-      const { status } = useCamera
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission refusée', 'Autorisez l\'accès pour choisir une photo.');
-        return;
-      }
-      const pickerOptions: ImagePicker.ImagePickerOptions = {
-        allowsEditing: true, aspect: [1, 1] as [number, number],
-        quality: 0.4, base64: true,
-        exif: false,
-      };
-      const result = useCamera
-        ? await ImagePicker.launchCameraAsync(pickerOptions)
-        : await ImagePicker.launchImageLibraryAsync(pickerOptions);
-      if (!result.canceled && result.assets[0]) {
-        const uri = result.assets[0].base64
-          ? `data:image/jpeg;base64,${result.assets[0].base64}`
-          : result.assets[0].uri;
-        await updateProfilePhoto(profile.id, uri);
-        reload();
-      }
-    };
+  const [photoMenuProfile, setPhotoMenuProfile] = useState<Profile | null>(null);
 
-    if (Platform.OS === 'web') {
-      pick(false);
+  const pickPhoto = async (profile: Profile, useCamera: boolean) => {
+    setPhotoMenuProfile(null);
+    const { status } = useCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission refusée', 'Autorisez l\'accès pour choisir une photo.');
       return;
     }
+    const pickerOptions: ImagePicker.ImagePickerOptions = {
+      allowsEditing: true, aspect: [1, 1] as [number, number],
+      quality: 0.4, base64: true, exif: false,
+    };
+    const result = useCamera
+      ? await ImagePicker.launchCameraAsync(pickerOptions)
+      : await ImagePicker.launchImageLibraryAsync(pickerOptions);
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].base64
+        ? `data:image/jpeg;base64,${result.assets[0].base64}`
+        : result.assets[0].uri;
+      await updateProfilePhoto(profile.id, uri);
+      reload();
+    }
+  };
 
-    Alert.alert('Photo de profil', `Modifier la photo de ${profile.name}`, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Appareil photo', onPress: () => pick(true) },
-      { text: 'Galerie', onPress: () => pick(false) },
-    ]);
+  const handlePickPhoto = (profile: Profile) => {
+    setPhotoMenuProfile(profile);
   };
 
   // ── Profils ──────────────────────────────────────────────────
@@ -391,6 +384,26 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
         </View>
       </Modal>
 
+      {/* ── MODAL PHOTO ── */}
+      <Modal visible={!!photoMenuProfile} transparent animationType="fade" onRequestClose={() => setPhotoMenuProfile(null)}>
+        <TouchableOpacity style={styles.photoOverlay} activeOpacity={1} onPress={() => setPhotoMenuProfile(null)}>
+          <View style={styles.photoMenu}>
+            <Text style={styles.photoMenuTitle}>Photo de {photoMenuProfile?.name}</Text>
+            <TouchableOpacity style={styles.photoMenuBtn} onPress={() => photoMenuProfile && pickPhoto(photoMenuProfile, true)}>
+              <MaterialCommunityIcons name="camera" size={22} color="#fff" />
+              <Text style={styles.photoMenuBtnText}>Prendre une photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.photoMenuBtn, styles.photoMenuBtnAlt]} onPress={() => photoMenuProfile && pickPhoto(photoMenuProfile, false)}>
+              <MaterialCommunityIcons name="image-outline" size={22} color="#fff" />
+              <Text style={styles.photoMenuBtnText}>Choisir dans la galerie</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.photoMenuCancel} onPress={() => setPhotoMenuProfile(null)}>
+              <Text style={styles.photoMenuCancelText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* ── MODAL GROUPE ── */}
       <Modal visible={showGroupModal} transparent animationType="slide" onRequestClose={() => setShowGroupModal(false)}>
         <View style={styles.modalOverlay}>
@@ -577,4 +590,29 @@ const styles = StyleSheet.create({
   modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   modalBtnTextGray: { fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
   modalBtnTextWhite: { fontSize: 16, fontWeight: '700', color: '#fff' },
+
+  // Modal photo
+  photoOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  photoMenu: {
+    backgroundColor: '#16213e',
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, gap: 12,
+  },
+  photoMenuTitle: {
+    fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center', marginBottom: 4,
+  },
+  photoMenuBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: '#f39c12', borderRadius: 14, padding: 16,
+  },
+  photoMenuBtnAlt: { backgroundColor: 'rgba(255,255,255,0.1)' },
+  photoMenuBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  photoMenuCancel: {
+    alignItems: 'center', paddingVertical: 12,
+  },
+  photoMenuCancelText: { fontSize: 15, color: 'rgba(255,255,255,0.35)', fontWeight: '600' },
 });
