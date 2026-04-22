@@ -88,9 +88,14 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
         Alert.alert('Permission refusée', 'Autorisez l\'accès pour choisir une photo.');
         return;
       }
+      const pickerOptions: ImagePicker.ImagePickerOptions = {
+        allowsEditing: true, aspect: [1, 1] as [number, number],
+        quality: 0.4, base64: true,
+        exif: false,
+      };
       const result = useCamera
-        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true })
-        : await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
+        ? await ImagePicker.launchCameraAsync(pickerOptions)
+        : await ImagePicker.launchImageLibraryAsync(pickerOptions);
       if (!result.canceled && result.assets[0]) {
         const uri = result.assets[0].base64
           ? `data:image/jpeg;base64,${result.assets[0].base64}`

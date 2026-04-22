@@ -10,6 +10,7 @@ export interface Game {
   accentColor: string;
   minPlayers: number;
   maxPlayers: number;
+  lowWins?: boolean; // true = score le plus bas gagne
 }
 
 export interface Profile {

@@ -240,18 +240,27 @@ export default function HomeScreen({
 
                     {/* Leader */}
                     <View style={styles.leaderRow}>
-                      <MaterialCommunityIcons name="crown" size={16} color="#f39c12" />
+                      <MaterialCommunityIcons
+                        name={ag.game.lowWins ? 'arrow-down-circle' : 'crown'}
+                        size={16}
+                        color={ag.game.lowWins ? '#00ACC1' : '#f39c12'}
+                      />
                       {ag.leaderScore !== null ? (
                         <Text style={styles.leaderText}>
-                          En tête :{' '}
+                          {ag.game.lowWins ? 'Meilleur score : ' : 'En tête : '}
                           <Text style={styles.leaderName}>{ag.leaderName}</Text>
                           {' — '}
-                          <Text style={styles.leaderScore}>
-                            {ag.leaderScore > 0 ? '+' : ''}{ag.leaderScore} pts
+                          <Text style={[styles.leaderScore, ag.game.lowWins && styles.leaderScoreLow]}>
+                            {ag.leaderScore} pts
                           </Text>
                         </Text>
                       ) : (
                         <Text style={styles.leaderText}>Aucune manche jouée</Text>
+                      )}
+                      {ag.game.lowWins && (
+                        <View style={styles.lowWinsBadge}>
+                          <Text style={styles.lowWinsBadgeText}>↓ gagne</Text>
+                        </View>
                       )}
                     </View>
 
@@ -524,6 +533,23 @@ const styles = StyleSheet.create({
   leaderScore: {
     fontWeight: '800',
     color: '#f39c12',
+  },
+  leaderScoreLow: {
+    color: '#00ACC1',
+  },
+  lowWinsBadge: {
+    backgroundColor: 'rgba(0,172,193,0.15)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,172,193,0.3)',
+  },
+  lowWinsBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#00ACC1',
+    letterSpacing: 0.5,
   },
   resumeButton: {
     flexDirection: 'row',

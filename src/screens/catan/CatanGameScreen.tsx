@@ -40,6 +40,14 @@ export default function CatanGameScreen({ players, onEnd, onGoHome, onMeta }: Ca
         score: next[p.id] ?? 0,
       }));
       onMeta(scores);
+
+      // Auto-fin si quelqu'un atteint WIN_SCORE
+      if (next[playerId] >= WIN_SCORE) {
+        const sorted = [...players].sort((a, b) => (next[b.id] ?? 0) - (next[a.id] ?? 0));
+        setWinner(sorted[0]);
+        setGameOver(true);
+      }
+
       return next;
     });
   };

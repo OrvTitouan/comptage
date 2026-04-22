@@ -44,7 +44,7 @@ export default function App() {
   const endGame = async (id: string) => {
     const ag = activeGames.find((g) => g.id === id);
     if (ag?.currentScores && ag.currentScores.length > 0) {
-      const isLowWins = ag.game.id === 'papayoo' || ag.game.id === 'skyjo' || ag.game.id === '6quiprend';
+      const isLowWins = ag.game.lowWins ?? false;
       const sorted = [...ag.currentScores].sort((a, b) =>
         isLowWins ? a.score - b.score : b.score - a.score
       );
@@ -72,7 +72,7 @@ export default function App() {
   const updateMeta = (id: string, scores: PlayerScore[]) => {
     setActiveGames((prev) => prev.map((g) => {
       if (g.id !== id) return g;
-      const lowWins = g.game.id === 'papayoo' || g.game.id === 'skyjo' || g.game.id === '6quiprend';
+      const lowWins = g.game.lowWins ?? false;
       const sorted = [...scores].sort((a, b) =>
         lowWins ? a.score - b.score : b.score - a.score
       );
@@ -112,7 +112,7 @@ export default function App() {
     if (!ag?.currentScores || ag.currentScores.length === 0) return;
 
     const doClose = async () => {
-      const isLowWins = ag.game.id === 'papayoo' || ag.game.id === 'skyjo' || ag.game.id === '6quiprend';
+      const isLowWins = ag.game.lowWins ?? false;
       const sorted = [...ag.currentScores!].sort((a, b) =>
         isLowWins ? a.score - b.score : b.score - a.score
       );

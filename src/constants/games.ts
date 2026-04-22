@@ -22,6 +22,7 @@ export const GAMES: Game[] = [
     accentColor: '#d68910',
     minPlayers: 2,
     maxPlayers: 6,
+    lowWins: true,
   },
   {
     id: 'skull-king',
@@ -66,6 +67,7 @@ export const GAMES: Game[] = [
     accentColor: '#007C91',
     minPlayers: 2,
     maxPlayers: 8,
+    lowWins: true,
   },
   {
     id: '6quiprend',
@@ -77,6 +79,7 @@ export const GAMES: Game[] = [
     accentColor: '#922b21',
     minPlayers: 2,
     maxPlayers: 10,
+    lowWins: true,
   },
   {
     id: 'ligretto',

@@ -89,7 +89,7 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
       .filter((ag) => ag.currentScores && ag.currentScores.length > 0)
       .map((ag) => {
         const scores = ag.currentScores!;
-        const isLowWins = ag.game.id === 'papayoo';
+        const isLowWins = ag.game.lowWins ?? false;
         const sorted = [...scores].sort((a, b) => isLowWins ? a.score - b.score : b.score - a.score);
         const topScore = sorted[0].score;
         return {
