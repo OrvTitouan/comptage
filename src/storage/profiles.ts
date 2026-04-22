@@ -30,3 +30,8 @@ export async function deleteProfile(id: string): Promise<void> {
   const profiles = await loadProfiles();
   await saveProfiles(profiles.filter((p) => p.id !== id));
 }
+
+export async function updateProfilePhoto(id: string, photoUri: string): Promise<void> {
+  const profiles = await loadProfiles();
+  await saveProfiles(profiles.map((p) => p.id === id ? { ...p, photoUri } : p));
+}

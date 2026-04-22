@@ -16,6 +16,15 @@ import { Player, PlayerScore } from '../../types';
 
 const WIN_SCORE = 99;
 
+function getLeaderEmoji(name: string): string {
+  const n = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/^(michelle|mich|miche)$/.test(n)) return '🐷';
+  if (/^(capucine|capu)$/.test(n)) return '🐄';
+  if (/^manon$/.test(n)) return '🦆';
+  if (/^come$/.test(n)) return '🐀';
+  return '👑';
+}
+
 interface LigrettoGameScreenProps {
   players: Player[];
   onEnd: () => void;
@@ -169,7 +178,7 @@ export default function LigrettoGameScreen({
                 <View key={p.id} style={styles.scoreRow}>
                   <View style={styles.scoreLeft}>
                     <Text style={[styles.scoreRank, isLeader && styles.scoreRankLeader]}>
-                      {isLeader ? '👑' : `#${i + 1}`}
+                      {isLeader ? getLeaderEmoji(p.name) : `#${i + 1}`}
                     </Text>
                     <Text style={styles.scoreName}>{p.name}</Text>
                   </View>

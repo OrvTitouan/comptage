@@ -15,6 +15,7 @@ export interface Game {
 export interface Profile {
   id: string;
   name: string;
+  photoUri?: string;
 }
 
 export interface Group {

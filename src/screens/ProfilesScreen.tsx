@@ -10,10 +10,13 @@ import {
   Alert,
   StatusBar,
   Modal,
+  Image,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { Profile, Group } from '../types';
-import { loadProfiles, addProfile, deleteProfile } from '../storage/profiles';
+import { loadProfiles, addProfile, deleteProfile, updateProfilePhoto } from '../storage/profiles';
 import { loadGroups, saveGroup, deleteGroup } from '../storage/groups';
 import { loadResults, computeStats, PlayerStats } from '../storage/stats';
 import { GAMES } from '../constants/games';
@@ -72,6 +75,41 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
   const closeStats = () => {
     setStatsProfile(null);
     setPlayerStats(null);
+  };
+
+  // ── Photo de profil ──────────────────────────────────────────
+
+  const handlePickPhoto = async (profile: Profile) => {
+    const pick = async (useCamera: boolean) => {
+      const { status } = useCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', 'Autorisez l\'accès pour choisir une photo.');
+        return;
+      }
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true })
+        : await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
+      if (!result.canceled && result.assets[0]) {
+        const uri = result.assets[0].base64
+          ? `data:image/jpeg;base64,${result.assets[0].base64}`
+          : result.assets[0].uri;
+        await updateProfilePhoto(profile.id, uri);
+        reload();
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      pick(false);
+      return;
+    }
+
+    Alert.alert('Photo de profil', `Modifier la photo de ${profile.name}`, [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Appareil photo', onPress: () => pick(true) },
+      { text: 'Galerie', onPress: () => pick(false) },
+    ]);
   };
 
   // ── Profils ──────────────────────────────────────────────────
@@ -201,9 +239,16 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
                 onPress={() => openPlayerStats(profile)}
                 activeOpacity={0.8}
               >
-                <View style={styles.profileAvatar}>
-                  <Text style={styles.profileInitials}>{profile.name.slice(0, 2).toUpperCase()}</Text>
-                </View>
+                <TouchableOpacity onPress={() => handlePickPhoto(profile)} style={styles.profileAvatar} activeOpacity={0.8}>
+                  {profile.photoUri ? (
+                    <Image source={{ uri: profile.photoUri }} style={styles.profileAvatarImg} />
+                  ) : (
+                    <Text style={styles.profileInitials}>{profile.name.slice(0, 2).toUpperCase()}</Text>
+                  )}
+                  <View style={styles.profileAvatarEdit}>
+                    <MaterialCommunityIcons name="camera" size={10} color="#fff" />
+                  </View>
+                </TouchableOpacity>
                 <View style={styles.profileInfo}>
                   <Text style={styles.profileName}>{profile.name}</Text>
                   <Text style={styles.profileHint}>Appuyer pour voir les stats</Text>
@@ -268,11 +313,18 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
           <View style={styles.modalCard}>
             {/* En-tête */}
             <View style={styles.statsHeader}>
-              <View style={styles.statsAvatar}>
-                <Text style={styles.statsAvatarText}>
-                  {statsProfile?.name.slice(0, 2).toUpperCase()}
-                </Text>
-              </View>
+              <TouchableOpacity style={styles.statsAvatar} onPress={() => statsProfile && handlePickPhoto(statsProfile)} activeOpacity={0.8}>
+                {statsProfile?.photoUri ? (
+                  <Image source={{ uri: statsProfile.photoUri }} style={styles.profileAvatarImg} />
+                ) : (
+                  <Text style={styles.statsAvatarText}>
+                    {statsProfile?.name.slice(0, 2).toUpperCase()}
+                  </Text>
+                )}
+                <View style={styles.profileAvatarEdit}>
+                  <MaterialCommunityIcons name="camera" size={10} color="#fff" />
+                </View>
+              </TouchableOpacity>
               <View style={{ flex: 1 }}>
                 <Text style={styles.statsName}>{statsProfile?.name}</Text>
                 <Text style={styles.statsSubtitle}>Statistiques globales</Text>
@@ -432,6 +484,13 @@ const styles = StyleSheet.create({
   profileAvatar: {
     width: 48, height: 48, borderRadius: 24,
     backgroundColor: '#f39c12', justifyContent: 'center', alignItems: 'center', marginRight: 14,
+    overflow: 'hidden',
+  },
+  profileAvatarImg: { width: 48, height: 48, borderRadius: 24 },
+  profileAvatarEdit: {
+    position: 'absolute', bottom: 0, right: 0,
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 8,
+    width: 16, height: 16, justifyContent: 'center', alignItems: 'center',
   },
   profileInitials: { fontSize: 20, fontWeight: '800', color: '#fff' },
   profileInfo: { flex: 1 },
@@ -459,6 +518,7 @@ const styles = StyleSheet.create({
   statsAvatar: {
     width: 52, height: 52, borderRadius: 26,
     backgroundColor: '#f39c12', justifyContent: 'center', alignItems: 'center',
+    overflow: 'hidden',
   },
   statsAvatarText: { fontSize: 20, fontWeight: '800', color: '#fff' },
   statsName: { fontSize: 20, fontWeight: '800', color: '#fff' },
