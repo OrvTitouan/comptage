@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, PlayerScore, Team } from '../../types';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 interface ClassicGameScreenProps {
   players: Player[];
@@ -220,11 +221,12 @@ export default function ClassicGameScreen({ players, gameName, teams, onEnd, onG
             return (
               <View key={id} style={[styles.playerCard, teams && { borderLeftWidth: 4, borderLeftColor: color }]}>
                 <View style={styles.playerLeft}>
-                  <View style={[styles.avatar, { backgroundColor: color }, isLeader && styles.avatarLeader]}>
-                    <Text style={styles.avatarText}>
-                      {getLabel(id).slice(0, 2).toUpperCase()}
-                    </Text>
-                  </View>
+                  <PlayerAvatar
+                    name={getLabel(id)}
+                    photoUri={!teams ? players.find(p => p.id === id)?.photoUri : undefined}
+                    size={50}
+                    color={color}
+                  />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.playerName} numberOfLines={1}>{getLabel(id)}</Text>
                     {members ? (

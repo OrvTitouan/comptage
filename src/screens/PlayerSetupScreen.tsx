@@ -168,7 +168,7 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
       const group = groups.find((g) => g.id === selectedGroupId)!;
       const players: Player[] = profiles
         .filter((p) => group.memberIds.includes(p.id))
-        .map((p) => ({ id: p.id, name: p.name }));
+        .map((p) => ({ id: p.id, name: p.name, photoUri: p.photoUri }));
       onStart(players, totalRounds, group.name, customGameName || undefined);
     } else {
       if (selectedIds.size < 1) {
@@ -177,7 +177,7 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
       }
       const players: Player[] = profiles
         .filter((p) => selectedIds.has(p.id))
-        .map((p) => ({ id: p.id, name: p.name }));
+        .map((p) => ({ id: p.id, name: p.name, photoUri: p.photoUri }));
       if (teamsEnabled) {
         const unassigned = Array.from(selectedIds).filter((id) => !playerTeam[id]);
         if (unassigned.length > 0) {

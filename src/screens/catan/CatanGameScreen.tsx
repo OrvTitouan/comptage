@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, PlayerScore } from '../../types';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 interface CatanGameScreenProps {
   players: Player[];
@@ -163,11 +164,7 @@ export default function CatanGameScreen({ players, onEnd, onGoHome, onMeta }: Ca
             <View key={player.id} style={styles.playerCard}>
               {/* Name row */}
               <View style={styles.playerHeader}>
-                <View style={styles.playerAvatar}>
-                  <Text style={styles.playerAvatarText}>
-                    {player.name.slice(0, 2).toUpperCase()}
-                  </Text>
-                </View>
+                <PlayerAvatar name={player.name} photoUri={player.photoUri} size={48} color="#e67e22" />
                 <View style={styles.playerInfo}>
                   <View style={styles.playerNameRow}>
                     <Text style={styles.playerName}>{player.name}</Text>

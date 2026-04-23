@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, PlayerScore } from '../../types';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 interface SixQuiPrendGameScreenProps {
   players: Player[];
@@ -249,9 +250,7 @@ export default function SixQuiPrendGameScreen({ players, onEnd, onGoHome, onMeta
             const danger = total >= WARNING_THRESHOLD;
             return (
               <View key={player.id} style={[styles.playerRow, danger && styles.playerRowDanger]}>
-                <View style={[styles.avatar, danger && styles.avatarDanger]}>
-                  <Text style={styles.avatarText}>{player.name.slice(0, 2).toUpperCase()}</Text>
-                </View>
+                <PlayerAvatar name={player.name} photoUri={player.photoUri} size={46} color={danger ? '#e74c3c' : GAME_COLOR} />
                 <View style={styles.playerInfo}>
                   <Text style={styles.playerName}>{player.name}</Text>
                   <Text style={[styles.playerTotal, danger && styles.playerTotalDanger]}>Total : {total} 🐂</Text>

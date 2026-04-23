@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, PapayooRoundScore } from '../../types';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 interface PapayooRoundScreenProps {
   roundNumber: number;
@@ -109,9 +110,7 @@ export default function PapayooRoundScreen({
         {players.map((player) => (
           <View key={player.id} style={styles.playerRow}>
             <View style={styles.playerInfo}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{player.name.slice(0, 2).toUpperCase()}</Text>
-              </View>
+              <PlayerAvatar name={player.name} photoUri={player.photoUri} size={40} color="#f39c12" />
               <Text style={styles.playerName}>{player.name}</Text>
             </View>
 

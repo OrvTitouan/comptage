@@ -12,6 +12,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, Flip7Round, Flip7RoundScore, calcFlip7Score, FLIP7_WIN_SCORE, GameResult, PlayerScore } from '../../types';
 import Flip7RoundScreen from './Flip7RoundScreen';
+import PlayerAvatar from '../../components/PlayerAvatar';
 import { saveResult } from '../../storage/stats';
 
 interface Flip7GameScreenProps {
@@ -124,9 +125,7 @@ export default function Flip7GameScreen({ players, onEnd, onGoHome, onMeta }: Fl
           return (
             <View key={player.id} style={[styles.playerRow, isFirst && styles.playerRowFirst]}>
               <Text style={styles.rank}>#{index + 1}</Text>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{player.name.slice(0, 2).toUpperCase()}</Text>
-              </View>
+              <PlayerAvatar name={player.name} photoUri={player.photoUri} size={42} color="#e74c3c" />
               <View style={styles.playerInfo}>
                 <View style={styles.playerNameRow}>
                   <Text style={styles.playerName}>{player.name}</Text>

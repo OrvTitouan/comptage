@@ -28,6 +28,7 @@ export interface Group {
 export interface Player {
   id: string;
   name: string;
+  photoUri?: string;
 }
 
 export interface Team {

@@ -14,6 +14,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, GameResult, PlayerResult, PlayerScore } from '../../types';
 import { saveResult } from '../../storage/stats';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 const TOTAL_ROUNDS = 8;
 const TOTAL_SCORING = 9; // 8 régions + 1 sanctuaires
@@ -172,9 +173,7 @@ export default function FarwayGameScreen({ players, onEnd, onGoHome, onMeta }: F
 
           {players.map((p) => (
             <View key={p.id} style={styles.inputCard}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{p.name.slice(0, 2).toUpperCase()}</Text>
-              </View>
+              <PlayerAvatar name={p.name} photoUri={p.photoUri} size={44} color={GREEN_DARK} />
               <Text style={styles.inputCardName}>{p.name}</Text>
               <TextInput
                 style={styles.renownInput}

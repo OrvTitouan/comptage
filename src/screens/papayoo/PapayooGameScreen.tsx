@@ -12,6 +12,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, PapayooRound, PapayooRoundScore, GameResult, PlayerScore } from '../../types';
 import PapayooRoundScreen from './PapayooRoundScreen';
+import PlayerAvatar from '../../components/PlayerAvatar';
 import { saveResult } from '../../storage/stats';
 
 interface PapayooGameScreenProps {
@@ -126,9 +127,7 @@ export default function PapayooGameScreen({ players, totalRounds, onEnd, onGoHom
           return (
             <View key={player.id} style={[styles.playerRow, isFirst && rounds.length > 0 && styles.playerRowFirst]}>
               <Text style={styles.rank}>#{index + 1}</Text>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{player.name.slice(0, 2).toUpperCase()}</Text>
-              </View>
+              <PlayerAvatar name={player.name} photoUri={player.photoUri} size={40} color="#f39c12" />
               <Text style={styles.playerName}>{player.name}</Text>
               <Text style={[styles.score, isFirst && rounds.length > 0 && styles.scoreFirst]}>
                 {total} pts

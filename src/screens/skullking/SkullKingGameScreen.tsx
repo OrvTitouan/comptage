@@ -20,6 +20,7 @@ import {
 } from '../../types';
 import { saveResult } from '../../storage/stats';
 import SkullKingRoundScreen from './SkullKingRoundScreen';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 const TOTAL_ROUNDS = 10;
 const BLUE = '#2980b9';
@@ -118,9 +119,7 @@ export default function SkullKingGameScreen({ players, onEnd, onGoHome, onMeta }
               return (
                 <View key={p.id} style={[styles.winnerRow, i === 0 && styles.winnerRowFirst]}>
                   <Text style={styles.winnerRank}>#{i + 1}</Text>
-                  <View style={[styles.winnerAvatar, i === 0 && styles.winnerAvatarFirst]}>
-                    <Text style={styles.avatarText}>{p.name.slice(0, 2).toUpperCase()}</Text>
-                  </View>
+                  <PlayerAvatar name={p.name} photoUri={p.photoUri} size={40} color={i === 0 ? BLUE : 'rgba(255,255,255,0.15)'} />
                   <Text style={styles.winnerName}>{p.name}</Text>
                   <Text style={[styles.winnerScore, total < 0 && styles.scoreNeg]}>
                     {total > 0 ? '+' : ''}{total} pts
@@ -187,9 +186,7 @@ export default function SkullKingGameScreen({ players, onEnd, onGoHome, onMeta }
           return (
             <View key={player.id} style={[styles.playerRow, isFirst && styles.playerRowFirst]}>
               <Text style={styles.rank}>#{index + 1}</Text>
-              <View style={[styles.avatar, isFirst && styles.avatarFirst]}>
-                <Text style={styles.avatarText}>{player.name.slice(0, 2).toUpperCase()}</Text>
-              </View>
+              <PlayerAvatar name={player.name} photoUri={player.photoUri} size={40} color={isFirst ? BLUE : 'rgba(255,255,255,0.15)'} />
               <Text style={styles.playerName}>{player.name}</Text>
               <Text style={[styles.score, isFirst && styles.scoreFirst, total < 0 && styles.scoreNeg]}>
                 {total > 0 ? '+' : ''}{total} pts

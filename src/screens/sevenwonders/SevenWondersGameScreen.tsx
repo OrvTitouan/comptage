@@ -14,6 +14,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, GameResult, PlayerResult, PlayerScore } from '../../types';
 import { saveResult } from '../../storage/stats';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 const COLOR = '#7D3C98';
 const COLOR_DARK = '#5B2C6F';
@@ -381,9 +382,7 @@ function SimpleRow({ player, color, value, onChange }: {
 }) {
   return (
     <View style={styles.playerRow}>
-      <View style={[styles.avatar, { backgroundColor: color + '55' }]}>
-        <Text style={styles.avatarText}>{player.name.slice(0, 2).toUpperCase()}</Text>
-      </View>
+      <PlayerAvatar name={player.name} photoUri={player.photoUri} size={36} color={color} />
       <Text style={styles.playerName}>{player.name}</Text>
       <TextInput
         style={styles.pointsInput}
@@ -408,9 +407,7 @@ function MilitaryRow({ player, sign, abs, onSignChange, onAbsChange }: {
   const val = sign * (parseInt(abs) || 0);
   return (
     <View style={styles.playerRow}>
-      <View style={[styles.avatar, { backgroundColor: '#e74c3c55' }]}>
-        <Text style={styles.avatarText}>{player.name.slice(0, 2).toUpperCase()}</Text>
-      </View>
+      <PlayerAvatar name={player.name} photoUri={player.photoUri} size={36} color="#e74c3c" />
       <Text style={styles.playerName}>{player.name}</Text>
       <TouchableOpacity
         style={[styles.signBtn, sign === 1 && styles.signBtnPos]}
@@ -445,9 +442,7 @@ function CoinsRow({ player, value, onChange }: {
   const pts = Math.floor((parseInt(value) || 0) / 3);
   return (
     <View style={styles.playerRow}>
-      <View style={[styles.avatar, { backgroundColor: '#f39c1255' }]}>
-        <Text style={styles.avatarText}>{player.name.slice(0, 2).toUpperCase()}</Text>
-      </View>
+      <PlayerAvatar name={player.name} photoUri={player.photoUri} size={36} color="#f39c12" />
       <Text style={styles.playerName}>{player.name}</Text>
       <TextInput
         style={styles.pointsInput}
@@ -478,9 +473,7 @@ function ScienceRow({ player, compasses, tablets, gears, onCompasses, onTablets,
   return (
     <View style={styles.scienceCard}>
       <View style={styles.scienceCardHeader}>
-        <View style={[styles.avatar, { backgroundColor: '#2ecc7155' }]}>
-          <Text style={styles.avatarText}>{player.name.slice(0, 2).toUpperCase()}</Text>
-        </View>
+        <PlayerAvatar name={player.name} photoUri={player.photoUri} size={36} color="#2ecc71" />
         <Text style={styles.playerName}>{player.name}</Text>
         <View style={styles.sciencePtsChip}>
           <Text style={styles.sciencePtsText}>{pts} pts</Text>

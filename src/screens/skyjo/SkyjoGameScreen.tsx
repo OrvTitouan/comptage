@@ -14,6 +14,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, GameResult, PlayerResult, PlayerScore } from '../../types';
 import { saveResult } from '../../storage/stats';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 const COLOR = '#00ACC1';
 const COLOR_DARK = '#007C91';
@@ -325,9 +326,7 @@ export default function SkyjoGameScreen({ players, onEnd, onGoHome, onMeta }: Pr
 
             return (
               <View key={p.id} style={[styles.playerRow, isCloser && styles.playerRowCloser]}>
-                <View style={[styles.avatar, { backgroundColor: isCloser ? COLOR : 'rgba(255,255,255,0.15)' }]}>
-                  <Text style={styles.avatarText}>{p.name.slice(0, 2).toUpperCase()}</Text>
-                </View>
+                <PlayerAvatar name={p.name} photoUri={p.photoUri} size={38} color={isCloser ? COLOR : 'rgba(255,255,255,0.15)'} />
                 <Text style={styles.playerName}>{p.name}</Text>
 
                 {isCloser && (

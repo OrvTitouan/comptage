@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, SkullKingRoundScore, calcSkullKingRoundScore } from '../../types';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 const BLUE = '#2980b9';
 const BLUE_DARK = '#1a5276';
@@ -129,9 +130,7 @@ export default function SkullKingRoundScreen({ roundNumber, players, onValidate,
             <View key={p.id} style={styles.playerCard}>
               {/* En-tête joueur + score prévu */}
               <View style={styles.cardHeader}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{p.name.slice(0, 2).toUpperCase()}</Text>
-                </View>
+                <PlayerAvatar name={p.name} photoUri={p.photoUri} size={40} color={BLUE} />
                 <Text style={styles.playerName}>{p.name}</Text>
                 <View style={[
                   styles.scoreBadge,

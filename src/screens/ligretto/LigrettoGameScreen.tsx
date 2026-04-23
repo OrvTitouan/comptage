@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, PlayerScore } from '../../types';
+import PlayerAvatar from '../../components/PlayerAvatar';
 
 const WIN_SCORE = 99;
 
@@ -199,9 +200,7 @@ export default function LigrettoGameScreen({
           <Text style={styles.sectionLabel}>Manche {roundNumber}</Text>
           {players.map((p) => (
             <View key={p.id} style={styles.inputRow}>
-              <View style={styles.inputAvatar}>
-                <Text style={styles.inputAvatarText}>{p.name.slice(0, 2).toUpperCase()}</Text>
-              </View>
+              <PlayerAvatar name={p.name} photoUri={p.photoUri} size={36} color="#e53935" />
               <Text style={styles.inputName}>{p.name}</Text>
               <View style={styles.inputWrapper}>
                 <TextInput
