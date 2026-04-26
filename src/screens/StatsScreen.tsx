@@ -16,10 +16,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { GameResult, GameId, Group, ActiveGameState } from '../types';
 import { loadResults, computeStats, PlayerStats, deleteResult, importResults, updateResultComment } from '../storage/stats';
 import { loadGroups } from '../storage/groups';
+import { loadProfiles, addProfile, updateProfilePhoto } from '../storage/profiles';
+import { getDefaultPhotoUri } from '../utils/defaultPhotos';
 import { GAMES } from '../constants/games';
+
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
+
+const normName = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 interface StatsScreenProps {
   onBack: () => void;
@@ -75,6 +80,7 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
   const [exportSelection, setExportSelection] = useState<Set<string>>(new Set());
   const [commentResultId, setCommentResultId] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
+  const [missingPlayers, setMissingPlayers] = useState<{ playerName: string; created: boolean }[]>([]);
 
   const reload = async () => {
     const [r, g] = await Promise.all([loadResults(), loadGroups()]);
@@ -230,10 +236,44 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
       const merged = await importResults(parsed as GameResult[]);
       const added = parsed.filter((r: any) => !allResults.some((e) => e.id === r.id)).length;
       setAllResults(merged);
-      Alert.alert('Import réussi', `${added} nouvelle(s) partie(s) ajoutée(s).`);
+
+      // Détecter les joueurs sans profil
+      const profiles = await loadProfiles();
+      const seen = new Set<string>();
+      const missing: { playerName: string; created: boolean }[] = [];
+      for (const result of parsed as GameResult[]) {
+        for (const pr of result.playerResults) {
+          if (seen.has(normName(pr.playerName))) continue;
+          seen.add(normName(pr.playerName));
+          const exists = profiles.some((p) => normName(p.name) === normName(pr.playerName));
+          if (!exists) missing.push({ playerName: pr.playerName, created: false });
+        }
+      }
+      setMissingPlayers(missing);
+
+      Alert.alert('Import réussi', `${added} nouvelle(s) partie(s) ajoutée(s).${missing.length > 0 ? `\n${missing.length} joueur(s) sans profil.` : ''}`);
     } catch {
       Alert.alert('Erreur', "Fichier invalide. Vérifiez que c'est bien un export de l'application.");
     }
+  };
+
+  const handleCreateMissingPlayer = async (playerName: string) => {
+    const profiles = await loadProfiles();
+    const similar = profiles.find((p) => normName(p.name) === normName(playerName) && p.name !== playerName);
+    if (similar) {
+      const msg = `"${similar.name}" existe déjà. Créer quand même "${playerName}" ?`;
+      const doCreate = Platform.OS === 'web' ? window.confirm(msg) : await new Promise<boolean>((res) =>
+        Alert.alert('Profil similaire détecté', msg, [
+          { text: 'Annuler', onPress: () => res(false), style: 'cancel' },
+          { text: 'Créer quand même', onPress: () => res(true) },
+        ])
+      );
+      if (!doCreate) return;
+    }
+    const newProfile = await addProfile(playerName);
+    const defaultUri = await getDefaultPhotoUri(playerName);
+    if (defaultUri) await updateProfilePhoto(newProfile.id, defaultUri);
+    setMissingPlayers((prev) => prev.map((p) => p.playerName === playerName ? { ...p, created: true } : p));
   };
 
   // ── ÉCRAN SÉLECTION GROUPE ────────────────────────────────────
@@ -470,6 +510,41 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
                 <Text style={styles.exportBtnText}>Importer</Text>
               </TouchableOpacity>
             </View>
+
+            {missingPlayers.length > 0 && (
+              <View style={styles.missingCard}>
+                <View style={styles.missingHeader}>
+                  <MaterialCommunityIcons name="account-question" size={18} color="#f39c12" />
+                  <Text style={styles.missingTitle}>Joueurs sans profil</Text>
+                  <TouchableOpacity onPress={() => setMissingPlayers([])} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <MaterialCommunityIcons name="close" size={16} color="rgba(255,255,255,0.3)" />
+                  </TouchableOpacity>
+                </View>
+                {missingPlayers.map((mp) => (
+                  <View key={mp.playerName} style={styles.missingRow}>
+                    <View style={styles.missingAvatar}>
+                      <Text style={styles.missingAvatarText}>{mp.playerName.slice(0, 2).toUpperCase()}</Text>
+                    </View>
+                    <Text style={styles.missingName}>{mp.playerName}</Text>
+                    {mp.created ? (
+                      <View style={styles.missingCreatedBadge}>
+                        <MaterialCommunityIcons name="check-circle" size={16} color="#2ecc71" />
+                        <Text style={styles.missingCreatedText}>Créé</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.missingCreateBtn}
+                        onPress={() => handleCreateMissingPlayer(mp.playerName)}
+                        activeOpacity={0.8}
+                      >
+                        <MaterialCommunityIcons name="account-plus" size={14} color="#fff" />
+                        <Text style={styles.missingCreateBtnText}>Créer le profil</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
 
             {filteredResults.length === 0
               ? <EmptyState icon="history" text="Aucune partie" sub="L'historique apparaîtra ici" />
@@ -747,6 +822,29 @@ const styles = StyleSheet.create({
   gameBadgeText: { fontSize: 12, fontWeight: '700' },
 
   // Historique
+  // Joueurs manquants
+  missingCard: {
+    backgroundColor: 'rgba(243,156,18,0.08)', borderRadius: 16,
+    borderWidth: 1, borderColor: 'rgba(243,156,18,0.25)', padding: 14, gap: 10,
+  },
+  missingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  missingTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: '#f39c12' },
+  missingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  missingAvatar: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center',
+  },
+  missingAvatarText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  missingName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#fff' },
+  missingCreateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#f39c12', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  missingCreateBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  missingCreatedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  missingCreatedText: { fontSize: 12, fontWeight: '700', color: '#2ecc71' },
+
   exportRow: { flexDirection: 'row', gap: 10 },
   exportBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

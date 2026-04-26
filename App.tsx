@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Platform, Alert } from 'react-native';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfilesScreen from './src/screens/ProfilesScreen';
@@ -18,6 +18,7 @@ import LigrettoGameScreen from './src/screens/ligretto/LigrettoGameScreen';
 import { Game, Player, GameId, ActiveGameState, GameScreenType, PlayerScore, GameResult, Team } from './src/types';
 import { GAMES } from './src/constants/games';
 import { saveResult } from './src/storage/stats';
+import { applyDefaultPhotos } from './src/storage/profiles';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,8 @@ export default function App() {
   const [navScreen, setNavScreen] = useState<NavScreen>('Home');
   const [activeGames, setActiveGames] = useState<ActiveGameState[]>([]);
   const [showingGameId, setShowingGameId] = useState<string | null>(null);
+
+  useEffect(() => { applyDefaultPhotos(); }, []);
 
   // ── Helpers ────────────────────────────────────────────────────
 

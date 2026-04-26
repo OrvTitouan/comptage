@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Game, Group, Player, Profile, Team } from '../types';
-import { loadProfiles, addProfile } from '../storage/profiles';
+import { loadProfiles, addProfile, updateProfilePhoto } from '../storage/profiles';
+import { getDefaultPhotoUri } from '../utils/defaultPhotos';
 import { loadGroups } from '../storage/groups';
 import { loadCustomGameNames, saveCustomGameName, deleteCustomGameName } from '../storage/customGames';
 import { loadResults } from '../storage/stats';
@@ -98,10 +99,21 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
     });
   };
 
+  const normName = (s: string) =>
+    s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
   const handleCreatePlayer = async () => {
     const trimmed = newPlayerName.trim();
     if (!trimmed) return;
+    const current = await loadProfiles();
+    const duplicate = current.find((p) => normName(p.name) === normName(trimmed));
+    if (duplicate) {
+      Alert.alert('Profil déjà existant', `"${duplicate.name}" existe déjà. Sélectionnez-le dans la liste.`);
+      return;
+    }
     const newProfile = await addProfile(trimmed);
+    const defaultUri = await getDefaultPhotoUri(trimmed);
+    if (defaultUri) await updateProfilePhoto(newProfile.id, defaultUri);
     await reload();
     setSelectedIds((prev) => new Set([...prev, newProfile.id]));
     setNewPlayerName('');

@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Profile, Group } from '../types';
 import { loadProfiles, addProfile, deleteProfile, updateProfilePhoto } from '../storage/profiles';
+import { getDefaultPhotoUri } from '../utils/defaultPhotos';
 import { loadGroups, saveGroup, deleteGroup } from '../storage/groups';
 import { loadResults, computeStats, PlayerStats } from '../storage/stats';
 import { GAMES } from '../constants/games';
@@ -116,12 +117,23 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
 
   // ── Profils ──────────────────────────────────────────────────
 
+  const normName = (s: string) =>
+    s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
   const handleAdd = async () => {
-    if (!name.trim()) {
+    const trimmed = name.trim();
+    if (!trimmed) {
       Alert.alert('Champ manquant', 'Veuillez renseigner un nom.');
       return;
     }
-    await addProfile(name.trim());
+    const duplicate = profiles.find((p) => normName(p.name) === normName(trimmed));
+    if (duplicate) {
+      Alert.alert('Profil déjà existant', `"${duplicate.name}" existe déjà.`);
+      return;
+    }
+    const newProfile = await addProfile(trimmed);
+    const defaultUri = await getDefaultPhotoUri(trimmed);
+    if (defaultUri) await updateProfilePhoto(newProfile.id, defaultUri);
     setName('');
     setShowForm(false);
     reload();
