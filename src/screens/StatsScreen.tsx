@@ -18,6 +18,8 @@ import { loadResults, computeStats, PlayerStats, deleteResult, importResults, up
 import { loadGroups } from '../storage/groups';
 import { loadProfiles, addProfile, updateProfilePhoto } from '../storage/profiles';
 import { getDefaultPhotoUri } from '../utils/defaultPhotos';
+import PlayerAvatar from '../components/PlayerAvatar';
+import { Profile } from '../types';
 import { GAMES } from '../constants/games';
 
 import * as FileSystem from 'expo-file-system';
@@ -81,11 +83,18 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
   const [commentResultId, setCommentResultId] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [missingPlayers, setMissingPlayers] = useState<{ playerName: string; created: boolean }[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+
+  const photoMap = useMemo<Record<string, string | undefined>>(() =>
+    Object.fromEntries(profiles.map((p) => [p.id, p.photoUri])),
+    [profiles]
+  );
 
   const reload = async () => {
-    const [r, g] = await Promise.all([loadResults(), loadGroups()]);
+    const [r, g, p] = await Promise.all([loadResults(), loadGroups(), loadProfiles()]);
     setAllResults(r);
     setGroups(g);
+    setProfiles(p);
   };
 
   useEffect(() => { reload(); }, []);
@@ -214,13 +223,17 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
   const handleImport = async () => {
     if (Platform.OS === 'web') {
       const input = document.createElement('input');
-      input.type = 'file'; input.accept = '.json,application/json';
+      input.type = 'file';
+      input.accept = '.json,application/json';
+      input.style.display = 'none';
       input.onchange = async (e: any) => {
-        const file = e.target?.files?.[0];
+        document.body.removeChild(input);
+        const file = (e.target as HTMLInputElement)?.files?.[0];
         if (!file) return;
         await processImport(await file.text());
       };
-      document.body.appendChild(input); input.click(); document.body.removeChild(input);
+      document.body.appendChild(input);
+      input.click();
     } else {
       const result = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain', '*/*'], copyToCacheDirectory: true });
       if (result.canceled || !result.assets?.[0]) return;
@@ -233,15 +246,25 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
     try {
       const parsed = JSON.parse(text);
       if (!Array.isArray(parsed)) throw new Error();
-      const merged = await importResults(parsed as GameResult[]);
-      const added = parsed.filter((r: any) => !allResults.some((e) => e.id === r.id)).length;
+
+      // Remapper les playerIds sur les profils locaux par nom (accents/casse ignorés)
+      const profiles = await loadProfiles();
+      const remapped: GameResult[] = (parsed as GameResult[]).map((result) => ({
+        ...result,
+        playerResults: result.playerResults.map((pr) => {
+          const local = profiles.find((p) => normName(p.name) === normName(pr.playerName));
+          return local ? { ...pr, playerId: local.id, playerName: local.name } : pr;
+        }),
+      }));
+
+      const merged = await importResults(remapped);
+      const added = remapped.filter((r) => !allResults.some((e) => e.id === r.id)).length;
       setAllResults(merged);
 
-      // Détecter les joueurs sans profil
-      const profiles = await loadProfiles();
+      // Détecter les joueurs sans profil (après remapping)
       const seen = new Set<string>();
       const missing: { playerName: string; created: boolean }[] = [];
-      for (const result of parsed as GameResult[]) {
+      for (const result of remapped) {
         for (const pr of result.playerResults) {
           if (seen.has(normName(pr.playerName))) continue;
           seen.add(normName(pr.playerName));
@@ -435,9 +458,7 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
                 <View key={s.playerId} style={styles.card}>
                   <View style={styles.playerRow}>
                     {index === 0 && <MaterialCommunityIcons name="crown" size={18} color="#f39c12" style={{ marginRight: 4 }} />}
-                    <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{s.playerName.slice(0, 2).toUpperCase()}</Text>
-                    </View>
+                    <PlayerAvatar name={s.playerName} photoUri={photoMap[s.playerId]} size={44} color="#f39c12" />
                     <Text style={styles.playerName}>{s.playerName}</Text>
                     <View style={styles.totalWins}>
                       <MaterialCommunityIcons name="trophy" size={14} color="#f39c12" />
@@ -470,9 +491,7 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
               : filteredStats.sort((a, b) => b.gamesPlayed - a.gamesPlayed).map((s) => (
                 <View key={s.playerId} style={styles.card}>
                   <View style={styles.playerRow}>
-                    <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{s.playerName.slice(0, 2).toUpperCase()}</Text>
-                    </View>
+                    <PlayerAvatar name={s.playerName} photoUri={photoMap[s.playerId]} size={44} color="#f39c12" />
                     <Text style={styles.playerName}>{s.playerName}</Text>
                     <Text style={styles.gamesCount}>{s.gamesPlayed} partie{s.gamesPlayed > 1 ? 's' : ''}</Text>
                   </View>

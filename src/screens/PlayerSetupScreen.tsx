@@ -16,6 +16,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Game, Group, Player, Profile, Team } from '../types';
 import { loadProfiles, addProfile, updateProfilePhoto } from '../storage/profiles';
 import { getDefaultPhotoUri } from '../utils/defaultPhotos';
+import PlayerAvatar from '../components/PlayerAvatar';
 import { loadGroups } from '../storage/groups';
 import { loadCustomGameNames, saveCustomGameName, deleteCustomGameName } from '../storage/customGames';
 import { loadResults } from '../storage/stats';
@@ -358,11 +359,12 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
                       onPress={() => togglePlayer(profile)}
                       activeOpacity={0.8}
                     >
-                      <View style={[styles.avatar, selected && styles.avatarSelected]}>
-                        <Text style={styles.avatarText}>
-                          {(profile.name || '??').slice(0, 2).toUpperCase()}
-                        </Text>
-                      </View>
+                      <PlayerAvatar
+                        name={profile.name || '??'}
+                        photoUri={profile.photoUri}
+                        size={48}
+                        color={selected ? '#f39c12' : 'rgba(255,255,255,0.15)'}
+                      />
                       <Text style={styles.profileName}>{profile.name || 'Profil sans nom'}</Text>
                       {selected && <MaterialCommunityIcons name="check-circle" size={24} color="#f39c12" />}
                     </TouchableOpacity>
