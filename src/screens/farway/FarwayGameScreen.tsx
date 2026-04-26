@@ -10,6 +10,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, GameResult, PlayerResult, PlayerScore } from '../../types';
@@ -280,11 +281,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: 14,
   },
-  avatar: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: GREEN_DARK, justifyContent: 'center', alignItems: 'center',
-  },
-  avatarText: { fontSize: 16, fontWeight: '800', color: '#fff' },
   inputCardName: { flex: 1, fontSize: 15, fontWeight: '700', color: '#fff' },
   renownInput: {
     width: 80, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10,

@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npx expo *)",
       "Bash(npx tsc *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(python3 -c \" import json with open\\('/c/Users/titou/.claude/projects/c--Users-titou-OneDrive-Documents-GitHub-comptage/7cb9480c-aef4-40fd-9d5a-9bd3f7db8546.jsonl', 'r', encoding='utf-8'\\) as f: lines = f.readlines\\(\\) for i, line in enumerate\\(lines\\): try: msg = json.loads\\(line\\) content = msg.get\\('message', {}\\).get\\('content', []\\) for block in content: if isinstance\\(block, dict\\) and block.get\\('type'\\) == 'text': text = block.get\\('text', ''\\) if 'Gagnant mal' in text or 'isLowWins' in text: print\\(f'=== Message {i}, type={msg.get\\(\\\\\"type\\\\\"\\)} ==='\\) print\\(text[:8000]\\) print\\('---END---'\\) except: pass \")",
+      "Bash(python3)",
+      "Bash(grep -o '\"1\\\\. Gagnant mal[^\"]*\\\\|Gagnant mal calc[^\\\\\\\\]*' /c/Users/titou/.claude/projects/c--Users-titou-OneDrive-Documents-GitHub-comptage/7cb9480c-aef4-40fd-9d5a-9bd3f7db8546.jsonl)"
     ]
   }
 }

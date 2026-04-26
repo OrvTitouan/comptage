@@ -33,24 +33,21 @@ export default function CatanGameScreen({ players, onEnd, onGoHome, onMeta }: Ca
   // ── Helpers ─────────────────────────────────────────────────────
 
   const changeVp = (playerId: string, delta: number) => {
-    setVp((prev) => {
-      const next = { ...prev, [playerId]: Math.max(0, (prev[playerId] ?? 0) + delta) };
-      const scores: PlayerScore[] = players.map((p) => ({
-        playerId: p.id,
-        playerName: p.name,
-        score: next[p.id] ?? 0,
-      }));
-      onMeta(scores);
+    const next = { ...vp, [playerId]: Math.max(0, (vp[playerId] ?? 0) + delta) };
+    setVp(next);
+    const scores: PlayerScore[] = players.map((p) => ({
+      playerId: p.id,
+      playerName: p.name,
+      score: next[p.id] ?? 0,
+    }));
+    onMeta(scores);
 
-      // Auto-fin si quelqu'un atteint WIN_SCORE
-      if (next[playerId] >= WIN_SCORE) {
-        const sorted = [...players].sort((a, b) => (next[b.id] ?? 0) - (next[a.id] ?? 0));
-        setWinner(sorted[0]);
-        setGameOver(true);
-      }
-
-      return next;
-    });
+    // Auto-fin si quelqu'un atteint WIN_SCORE
+    if (next[playerId] >= WIN_SCORE) {
+      const sorted = [...players].sort((a, b) => (next[b.id] ?? 0) - (next[a.id] ?? 0));
+      setWinner(sorted[0]);
+      setGameOver(true);
+    }
   };
 
   const handleEndGame = () => {
@@ -272,15 +269,6 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   playerHeader: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  playerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e67e22',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  playerAvatarText: { fontSize: 18, fontWeight: '800', color: '#fff' },
   playerInfo: { flex: 1, gap: 8 },
   playerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   playerName: { fontSize: 17, fontWeight: '700', color: '#fff' },

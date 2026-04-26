@@ -319,12 +319,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   playerLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
-  avatar: {
-    width: 50, height: 50, borderRadius: 25,
-    backgroundColor: GAME_COLOR, justifyContent: 'center', alignItems: 'center',
-  },
-  avatarLeader: { borderWidth: 2, borderColor: '#f39c12' },
-  avatarText: { fontSize: 18, fontWeight: '800', color: '#fff' },
   playerName: { fontSize: 16, fontWeight: '700', color: '#fff' },
   memberNames: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
   leaderBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },

@@ -170,7 +170,12 @@ export default function PlayerSetupScreen({ game, onBack, onStart }: PlayerSetup
   const handleStart = () => {
     // Sauvegarder le nom si mode classic
     if (game.id === 'classic' && customGameName.trim()) {
-      saveCustomGameName(customGameName.trim()).then(setSavedGameNames);
+      saveCustomGameName(customGameName.trim()).then(({ names, limitReached }) => {
+        setSavedGameNames(names);
+        if (limitReached) {
+          Alert.alert('Limite atteinte', 'La liste des noms sauvegardés est pleine (20 max). Le nom le plus ancien a été supprimé.');
+        }
+      });
     }
 
     if (tab === 'groupes') {

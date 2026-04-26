@@ -11,10 +11,9 @@ import {
   Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Player, PapayooRound, PapayooRoundScore, GameResult, PlayerScore } from '../../types';
+import { Player, PapayooRound, PapayooRoundScore, PlayerScore } from '../../types';
 import PapayooRoundScreen from './PapayooRoundScreen';
 import PlayerAvatar from '../../components/PlayerAvatar';
-import { saveResult } from '../../storage/stats';
 
 interface PapayooGameScreenProps {
   players: Player[];
@@ -61,25 +60,11 @@ export default function PapayooGameScreen({ players, totalRounds, onEnd, onGoHom
     const winner = sorted[0];
     const minScore = getTotalScore(winner.id, rounds);
 
-    const result: GameResult = {
-      id: Date.now().toString(),
-      gameId: 'papayoo',
-      gameName: 'Papayoo',
-      date: new Date().toISOString(),
-      rounds: rounds.length,
-      playerResults: players.map((p) => {
-        const score = getTotalScore(p.id, rounds);
-        return { playerId: p.id, playerName: p.name, score, winner: score === minScore };
-      }),
-    };
-    saveResult(result);
-
     if (Platform.OS === 'web') {
       window.alert(`🏆 Fin de partie !\n${winner.name} remporte la partie avec ${minScore} points !`);
       onEnd();
     } else {
       Alert.alert('🏆 Fin de partie !', `${winner.name} remporte la partie avec ${minScore} points !`, [
-        { text: 'Rejouer', onPress: onEnd },
         { text: 'Accueil', onPress: onEnd },
       ]);
     }
@@ -266,19 +251,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: 'rgba(255,255,255,0.4)',
     width: 28,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f39c12',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#fff',
   },
   playerName: {
     flex: 1,

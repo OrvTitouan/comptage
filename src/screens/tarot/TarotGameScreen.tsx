@@ -330,13 +330,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(192,57,43,0.4)',
   },
   rank: { fontSize: 14, fontWeight: '800', color: 'rgba(255,255,255,0.4)', width: 28 },
-  avatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  avatarFirst: { backgroundColor: RED },
-  avatarText: { fontSize: 14, fontWeight: '800', color: '#fff' },
   playerName: { flex: 1, fontSize: 16, fontWeight: '600', color: '#fff' },
   score: { fontSize: 18, fontWeight: '800', color: '#fff' },
   scoreFirst: { color: RED },

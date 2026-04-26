@@ -552,10 +552,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: 14,
   },
-  avatar: {
-    width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center',
-  },
-  avatarText: { fontSize: 14, fontWeight: '800', color: '#fff' },
   playerName: { flex: 1, fontSize: 15, fontWeight: '700', color: '#fff' },
   pointsInput: {
     width: 72, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10,

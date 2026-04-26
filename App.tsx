@@ -19,6 +19,7 @@ import { Game, Player, GameId, ActiveGameState, GameScreenType, PlayerScore, Gam
 import { GAMES } from './src/constants/games';
 import { saveResult } from './src/storage/stats';
 import { applyDefaultPhotos } from './src/storage/profiles';
+import { loadActiveGames, saveActiveGames } from './src/storage/activeGames';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,16 @@ export default function App() {
   const [activeGames, setActiveGames] = useState<ActiveGameState[]>([]);
   const [showingGameId, setShowingGameId] = useState<string | null>(null);
 
-  useEffect(() => { applyDefaultPhotos(); }, []);
+  useEffect(() => {
+    applyDefaultPhotos();
+    loadActiveGames().then((saved) => {
+      if (saved.length > 0) setActiveGames(saved);
+    });
+  }, []);
+
+  useEffect(() => {
+    saveActiveGames(activeGames);
+  }, [activeGames]);
 
   // ── Helpers ────────────────────────────────────────────────────
 

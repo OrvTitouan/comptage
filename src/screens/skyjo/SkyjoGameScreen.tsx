@@ -473,10 +473,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: COLOR + '55',
     backgroundColor: COLOR + '11',
   },
-  avatar: {
-    width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center',
-  },
-  avatarText: { fontSize: 13, fontWeight: '800', color: '#fff' },
   playerName: { flex: 1, fontSize: 14, fontWeight: '700', color: '#fff' },
 
   // Sign buttons

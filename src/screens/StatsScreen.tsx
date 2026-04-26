@@ -259,6 +259,7 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
 
       const merged = await importResults(remapped);
       const added = remapped.filter((r) => !allResults.some((e) => e.id === r.id)).length;
+      const updated = remapped.filter((r) => allResults.some((e) => e.id === r.id)).length;
       setAllResults(merged);
 
       // Détecter les joueurs sans profil (après remapping)
@@ -274,7 +275,12 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
       }
       setMissingPlayers(missing);
 
-      Alert.alert('Import réussi', `${added} nouvelle(s) partie(s) ajoutée(s).${missing.length > 0 ? `\n${missing.length} joueur(s) sans profil.` : ''}`);
+      const summary = [
+        added > 0 && `${added} nouvelle(s) partie(s) ajoutée(s)`,
+        updated > 0 && `${updated} partie(s) mise(s) à jour`,
+        missing.length > 0 && `${missing.length} joueur(s) sans profil`,
+      ].filter(Boolean).join('\n');
+      Alert.alert('Import réussi', summary || 'Aucune modification.');
     } catch {
       Alert.alert('Erreur', "Fichier invalide. Vérifiez que c'est bien un export de l'application.");
     }

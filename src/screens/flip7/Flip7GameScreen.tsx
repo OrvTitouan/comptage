@@ -11,10 +11,9 @@ import {
   Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Player, Flip7Round, Flip7RoundScore, calcFlip7Score, FLIP7_WIN_SCORE, GameResult, PlayerScore } from '../../types';
+import { Player, Flip7Round, Flip7RoundScore, calcFlip7Score, FLIP7_WIN_SCORE, PlayerScore } from '../../types';
 import Flip7RoundScreen from './Flip7RoundScreen';
 import PlayerAvatar from '../../components/PlayerAvatar';
-import { saveResult } from '../../storage/stats';
 
 interface Flip7GameScreenProps {
   players: Player[];
@@ -51,28 +50,12 @@ export default function Flip7GameScreen({ players, onEnd, onGoHome, onMeta }: Fl
     if (winner) {
       const finalScore = getTotalScore(winner.id, updatedRounds);
 
-      const result: GameResult = {
-        id: Date.now().toString(),
-        gameId: 'flip7',
-        gameName: 'Flip 7',
-        date: new Date().toISOString(),
-        rounds: updatedRounds.length,
-        playerResults: players.map((p) => ({
-          playerId: p.id,
-          playerName: p.name,
-          score: getTotalScore(p.id, updatedRounds),
-          winner: p.id === winner.id,
-        })),
-      };
-      saveResult(result);
-
       setTimeout(() => {
         if (Platform.OS === 'web') {
           window.alert(`🏆 Fin de partie !\n${winner.name} remporte la partie avec ${finalScore} points !`);
           onEnd();
         } else {
           Alert.alert('🏆 Fin de partie !', `${winner.name} remporte la partie avec ${finalScore} points !`, [
-            { text: 'Rejouer', onPress: onEnd },
             { text: 'Accueil', onPress: onEnd },
           ]);
         }
@@ -242,12 +225,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(231,76,60,0.35)',
   },
   rank: { fontSize: 14, fontWeight: '800', color: 'rgba(255,255,255,0.4)', width: 28 },
-  avatar: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: '#e74c3c',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  avatarText: { fontSize: 15, fontWeight: '800', color: '#fff' },
   playerInfo: { flex: 1, gap: 6 },
   playerNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   playerName: { fontSize: 16, fontWeight: '600', color: '#fff' },

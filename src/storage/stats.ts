@@ -36,9 +36,12 @@ export async function updateResultComment(id: string, comment: string): Promise<
 
 export async function importResults(incoming: GameResult[]): Promise<GameResult[]> {
   const existing = await loadResults();
-  const existingIds = new Set(existing.map((r) => r.id));
-  const newOnes = incoming.filter((r) => !existingIds.has(r.id));
-  const merged = [...newOnes, ...existing].sort(
+  const existingMap = new Map(existing.map((r) => [r.id, r]));
+  // Upsert : met à jour les résultats existants (playerIds remappés) et ajoute les nouveaux
+  for (const r of incoming) {
+    existingMap.set(r.id, r);
+  }
+  const merged = Array.from(existingMap.values()).sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));

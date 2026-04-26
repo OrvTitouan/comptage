@@ -249,12 +249,3 @@ export interface ActiveGameState {
   teams?: Team[];
 }
 
-export type Screen =
-  | 'Home'
-  | 'Profiles'
-  | 'Stats'
-  | { name: 'PlayerSetup'; game: Game }
-  | { name: 'PapayooGame'; game: Game; players: Player[]; totalRounds: number }
-  | { name: 'Flip7Game'; players: Player[] }
-  | { name: 'FarwayGame'; players: Player[] }
-  | { name: 'SkullKingGame'; players: Player[] };

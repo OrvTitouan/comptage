@@ -352,12 +352,6 @@ const styles = StyleSheet.create({
     padding: 14, marginBottom: 10,
   },
   playerRowDanger: { backgroundColor: 'rgba(231,76,60,0.08)', borderWidth: 1, borderColor: 'rgba(231,76,60,0.25)' },
-  avatar: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: GAME_COLOR, justifyContent: 'center', alignItems: 'center',
-  },
-  avatarDanger: { backgroundColor: '#e74c3c' },
-  avatarText: { fontSize: 16, fontWeight: '800', color: '#fff' },
   playerInfo: { flex: 1 },
   playerName: { fontSize: 16, fontWeight: '700', color: '#fff' },
   playerTotal: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 },

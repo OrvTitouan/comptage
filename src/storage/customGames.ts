@@ -11,15 +11,15 @@ export async function loadCustomGameNames(): Promise<string[]> {
   }
 }
 
-export async function saveCustomGameName(name: string): Promise<string[]> {
+export async function saveCustomGameName(name: string): Promise<{ names: string[]; limitReached: boolean }> {
   const trimmed = name.trim();
-  if (!trimmed) return loadCustomGameNames();
+  if (!trimmed) return { names: await loadCustomGameNames(), limitReached: false };
   const existing = await loadCustomGameNames();
-  // Déduplique, met le plus récent en premier
   const filtered = existing.filter((n) => n.toLowerCase() !== trimmed.toLowerCase());
-  const updated = [trimmed, ...filtered].slice(0, 20); // max 20 noms
+  const limitReached = filtered.length >= 20;
+  const updated = [trimmed, ...filtered].slice(0, 20);
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  return updated;
+  return { names: updated, limitReached };
 }
 
 export async function deleteCustomGameName(name: string): Promise<string[]> {

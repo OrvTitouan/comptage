@@ -265,11 +265,6 @@ const styles = StyleSheet.create({
     padding: 14, gap: 12,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center',
-  },
-  avatarText: { fontSize: 14, fontWeight: '800', color: '#fff' },
   playerName: { flex: 1, fontSize: 16, fontWeight: '700', color: '#fff' },
   scoreBadge: {
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10,
