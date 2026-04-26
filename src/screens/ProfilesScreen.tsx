@@ -101,7 +101,7 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
     if (!result.canceled && result.assets[0]) {
       const resized = await ImageManipulator.manipulateAsync(
         result.assets[0].uri,
-        [{ resize: { width: 256, height: 256 } }],
+        [{ resize: { width: 256 } }],
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
       const uri = `data:image/jpeg;base64,${resized.base64}`;
