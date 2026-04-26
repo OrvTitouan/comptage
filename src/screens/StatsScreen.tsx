@@ -9,7 +9,6 @@ import {
   StatusBar,
   Alert,
   Platform,
-  Share,
   Modal,
   TextInput,
 } from 'react-native';
@@ -18,6 +17,9 @@ import { GameResult, GameId, Group, ActiveGameState } from '../types';
 import { loadResults, computeStats, PlayerStats, deleteResult, importResults, updateResultComment } from '../storage/stats';
 import { loadGroups } from '../storage/groups';
 import { GAMES } from '../constants/games';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 
 interface StatsScreenProps {
   onBack: () => void;
@@ -69,8 +71,8 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [gameFilter, setGameFilter] = useState<GameId | null>(null);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importText, setImportText] = useState('');
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportSelection, setExportSelection] = useState<Set<string>>(new Set());
   const [commentResultId, setCommentResultId] = useState<string | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
 
@@ -161,23 +163,49 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
     await reload();
   };
 
-  const handleExport = async () => {
+  const openExportModal = () => {
     if (allResults.length === 0) { Alert.alert('Aucune partie', "Il n'y a rien à exporter."); return; }
-    const json = JSON.stringify(allResults, null, 2);
+    setExportSelection(new Set(allResults.map((r) => r.id)));
+    setShowExportModal(true);
+  };
+
+  const toggleExportItem = (id: string) => {
+    setExportSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (exportSelection.size === allResults.length) {
+      setExportSelection(new Set());
+    } else {
+      setExportSelection(new Set(allResults.map((r) => r.id)));
+    }
+  };
+
+  const confirmExport = async () => {
+    const toExport = allResults.filter((r) => exportSelection.has(r.id));
+    if (toExport.length === 0) { Alert.alert('Rien à exporter', 'Sélectionnez au moins une partie.'); return; }
+    setShowExportModal(false);
+    const json = JSON.stringify(toExport, null, 2);
+    const filename = `boardscore-${new Date().toISOString().slice(0, 10)}.json`;
     if (Platform.OS === 'web') {
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `parties-${new Date().toISOString().slice(0, 10)}.json`;
+      a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else {
-      await Share.share({ message: json, title: 'Parties Kounter' });
+      const path = `${FileSystem.cacheDirectory}${filename}`;
+      await FileSystem.writeAsStringAsync(path, json, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'Exporter les parties', UTI: 'public.json' });
     }
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (Platform.OS === 'web') {
       const input = document.createElement('input');
       input.type = 'file'; input.accept = '.json,application/json';
@@ -188,7 +216,10 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
       };
       document.body.appendChild(input); input.click(); document.body.removeChild(input);
     } else {
-      setImportText(''); setShowImportModal(true);
+      const result = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain', '*/*'], copyToCacheDirectory: true });
+      if (result.canceled || !result.assets?.[0]) return;
+      const text = await FileSystem.readAsStringAsync(result.assets[0].uri, { encoding: FileSystem.EncodingType.UTF8 });
+      await processImport(text);
     }
   };
 
@@ -430,7 +461,7 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
         {tab === 'history' && (
           <>
             <View style={styles.exportRow}>
-              <TouchableOpacity style={styles.exportBtn} onPress={handleExport} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.exportBtn} onPress={openExportModal} activeOpacity={0.8}>
                 <MaterialCommunityIcons name="export" size={16} color="#fff" />
                 <Text style={styles.exportBtnText}>Exporter</Text>
               </TouchableOpacity>
@@ -547,30 +578,55 @@ export default function StatsScreen({ onBack, activeGames = [] }: StatsScreenPro
         </View>
       </Modal>
 
-      {/* Modal import natif */}
-      <Modal visible={showImportModal} transparent animationType="slide" onRequestClose={() => setShowImportModal(false)}>
+      {/* Modal export : sélection des parties */}
+      <Modal visible={showExportModal} transparent animationType="slide" onRequestClose={() => setShowExportModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Importer des parties</Text>
-            <Text style={styles.modalSub}>Collez le contenu du fichier JSON exporté :</Text>
-            <TextInput
-              style={styles.modalInput}
-              multiline numberOfLines={8}
-              placeholder="Collez le JSON ici..."
-              placeholderTextColor="rgba(255,255,255,0.25)"
-              value={importText}
-              onChangeText={setImportText}
-              autoCapitalize="none" autoCorrect={false}
-            />
+          <View style={[styles.modalCard, { maxHeight: '80%' }]}>
+            <View style={styles.exportModalHeader}>
+              <Text style={styles.modalTitle}>Exporter des parties</Text>
+              <TouchableOpacity onPress={toggleSelectAll} style={styles.selectAllBtn}>
+                <Text style={styles.selectAllText}>
+                  {exportSelection.size === allResults.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+              {allResults.map((result) => {
+                const selected = exportSelection.has(result.id);
+                const color = GAME_COLORS[result.gameId];
+                return (
+                  <TouchableOpacity
+                    key={result.id}
+                    style={[styles.exportItem, selected && styles.exportItemSelected]}
+                    onPress={() => toggleExportItem(result.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.exportItemIcon, { backgroundColor: color + '33' }]}>
+                      <MaterialCommunityIcons name={GAME_ICONS[result.gameId] as any} size={16} color={color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.exportItemGame}>{result.gameName}</Text>
+                      <Text style={styles.exportItemMeta}>
+                        {formatDate(result.date)} · {result.playerResults.map((p) => p.playerName).join(', ')}
+                      </Text>
+                    </View>
+                    <MaterialCommunityIcons
+                      name={selected ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+                      size={22}
+                      color={selected ? '#2ecc71' : 'rgba(255,255,255,0.2)'}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
             <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setShowImportModal(false)}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setShowExportModal(false)}>
                 <Text style={styles.modalBtnText}>Annuler</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalBtnConfirm]}
-                onPress={async () => { setShowImportModal(false); await processImport(importText); }}
-              >
-                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Importer</Text>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnConfirm]} onPress={confirmExport}>
+                <Text style={[styles.modalBtnText, { color: '#fff' }]}>
+                  Exporter {exportSelection.size > 0 ? `(${exportSelection.size})` : ''}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -751,6 +807,18 @@ const styles = StyleSheet.create({
   modalCard: {
     backgroundColor: '#16213e', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 14,
   },
+  exportModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  selectAllBtn: { paddingVertical: 4, paddingHorizontal: 8 },
+  selectAllText: { fontSize: 13, fontWeight: '700', color: '#3498db' },
+  exportItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 10, paddingHorizontal: 4,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  exportItemSelected: { opacity: 1 },
+  exportItemIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  exportItemGame: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  exportItemMeta: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
   modalTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
   modalSub: { fontSize: 14, color: 'rgba(255,255,255,0.5)' },
   modalInput: {
