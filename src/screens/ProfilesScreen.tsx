@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { Profile, Group } from '../types';
 import { loadProfiles, addProfile, deleteProfile, updateProfilePhoto } from '../storage/profiles';
 import { loadGroups, saveGroup, deleteGroup } from '../storage/groups';
@@ -86,21 +87,24 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
     const { status } = useCamera
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
+    if (status === 'denied' || status === 'undetermined') {
       Alert.alert('Permission refusée', 'Autorisez l\'accès pour choisir une photo.');
       return;
     }
     const pickerOptions: ImagePicker.ImagePickerOptions = {
       allowsEditing: true, aspect: [1, 1] as [number, number],
-      quality: 0.4, base64: true, exif: false,
+      quality: 1, base64: false, exif: false,
     };
     const result = useCamera
       ? await ImagePicker.launchCameraAsync(pickerOptions)
       : await ImagePicker.launchImageLibraryAsync(pickerOptions);
     if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].base64
-        ? `data:image/jpeg;base64,${result.assets[0].base64}`
-        : result.assets[0].uri;
+      const resized = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 256, height: 256 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      const uri = `data:image/jpeg;base64,${resized.base64}`;
       await updateProfilePhoto(profile.id, uri);
       reload();
     }
