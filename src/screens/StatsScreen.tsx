@@ -714,9 +714,9 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#fff' },
 
   // Filtre jeux
-  gameFilterScroll: { maxHeight: 56 },
+  gameFilterScroll: { flexShrink: 0 },
   gameFilterContent: {
-    paddingHorizontal: 20, paddingVertical: 6, gap: 8, alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 8, gap: 8, alignItems: 'center',
   },
   gameFilterPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
