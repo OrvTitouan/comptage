@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, Flip7Round, Flip7RoundScore, calcFlip7Score, FLIP7_WIN_SCORE, GameResult, PlayerScore } from '../../types';
@@ -66,14 +67,15 @@ export default function Flip7GameScreen({ players, onEnd, onGoHome, onMeta }: Fl
       saveResult(result);
 
       setTimeout(() => {
-        Alert.alert(
-          '🏆 Fin de partie !',
-          `${winner.name} remporte la partie avec ${finalScore} points !`,
-          [
+        if (Platform.OS === 'web') {
+          window.alert(`🏆 Fin de partie !\n${winner.name} remporte la partie avec ${finalScore} points !`);
+          onEnd();
+        } else {
+          Alert.alert('🏆 Fin de partie !', `${winner.name} remporte la partie avec ${finalScore} points !`, [
             { text: 'Rejouer', onPress: onEnd },
             { text: 'Accueil', onPress: onEnd },
-          ]
-        );
+          ]);
+        }
       }, 300);
     }
   };

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Alert,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, PapayooRound, PapayooRoundScore, GameResult, PlayerScore } from '../../types';
@@ -73,14 +74,15 @@ export default function PapayooGameScreen({ players, totalRounds, onEnd, onGoHom
     };
     saveResult(result);
 
-    Alert.alert(
-      '🏆 Fin de partie !',
-      `${winner.name} remporte la partie avec ${minScore} points !`,
-      [
+    if (Platform.OS === 'web') {
+      window.alert(`🏆 Fin de partie !\n${winner.name} remporte la partie avec ${minScore} points !`);
+      onEnd();
+    } else {
+      Alert.alert('🏆 Fin de partie !', `${winner.name} remporte la partie avec ${minScore} points !`, [
         { text: 'Rejouer', onPress: onEnd },
         { text: 'Accueil', onPress: onEnd },
-      ]
-    );
+      ]);
+    }
   };
 
   if (enteringRound) {

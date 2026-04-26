@@ -7,11 +7,11 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, PlayerScore } from '../../types';
 import PlayerAvatar from '../../components/PlayerAvatar';
+import { confirmAlert } from '../../utils/confirm';
 
 interface CatanGameScreenProps {
   players: Player[];
@@ -66,14 +66,7 @@ export default function CatanGameScreen({ players, onEnd, onGoHome, onMeta }: Ca
   };
 
   const confirmEnd = () => {
-    Alert.alert(
-      'Terminer la partie ?',
-      'Le joueur avec le plus de points de victoire gagne.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Terminer', onPress: handleEndGame },
-      ]
-    );
+    confirmAlert('Terminer la partie ?', 'Le joueur avec le plus de points de victoire gagne.', handleEndGame, 'Terminer');
   };
 
   // ── Sorted standings ─────────────────────────────────────────────

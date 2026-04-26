@@ -15,6 +15,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, PlayerScore, Team } from '../../types';
 import PlayerAvatar from '../../components/PlayerAvatar';
+import { confirmAlert } from '../../utils/confirm';
 
 interface ClassicGameScreenProps {
   players: Player[];
@@ -115,14 +116,8 @@ export default function ClassicGameScreen({ players, gameName, teams, onEnd, onG
   };
 
   const confirmEnd = () => {
-    Alert.alert(
-      'Terminer la partie ?',
-      teams ? "L'équipe avec le score le plus élevé gagne." : 'Le joueur avec le score le plus élevé gagne.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Terminer', onPress: handleEndGame },
-      ]
-    );
+    const msg = teams ? "L'équipe avec le score le plus élevé gagne." : 'Le joueur avec le score le plus élevé gagne.';
+    confirmAlert('Terminer la partie ?', msg, handleEndGame, 'Terminer');
   };
 
   // ── Game over ────────────────────────────────────────────────────

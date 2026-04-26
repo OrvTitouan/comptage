@@ -128,13 +128,19 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
   };
 
   const handleDelete = (profile: Profile) => {
-    Alert.alert('Supprimer le profil', `Supprimer "${profile.name}" ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer', style: 'destructive',
-        onPress: async () => { await deleteProfile(profile.id); reload(); },
-      },
-    ]);
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Supprimer "${profile.name}" ?`)) {
+        deleteProfile(profile.id).then(reload);
+      }
+    } else {
+      Alert.alert('Supprimer le profil', `Supprimer "${profile.name}" ?`, [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer', style: 'destructive',
+          onPress: async () => { await deleteProfile(profile.id); reload(); },
+        },
+      ]);
+    }
   };
 
   // ── Groupes ──────────────────────────────────────────────────
@@ -156,10 +162,16 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
   };
 
   const handleDeleteGroup = (group: Group) => {
-    Alert.alert('Supprimer ce groupe ?', group.name, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: async () => { await deleteGroup(group.id); reload(); } },
-    ]);
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Supprimer le groupe "${group.name}" ?`)) {
+        deleteGroup(group.id).then(reload);
+      }
+    } else {
+      Alert.alert('Supprimer ce groupe ?', group.name, [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Supprimer', style: 'destructive', onPress: async () => { await deleteGroup(group.id); reload(); } },
+      ]);
+    }
   };
 
   const toggleMember = (id: string) => {
