@@ -63,14 +63,20 @@ export default function ProfilesScreen({ onBack }: ProfilesScreenProps) {
     setStatsProfile(profile);
     const results = await loadResults();
     const allStats = computeStats(results);
-    const found = allStats.find((s) => s.playerId === profile.id) ?? {
-      playerId: profile.id,
-      playerName: profile.name,
-      gamesPlayed: 0,
-      wins: 0,
-      winsByGame: {},
-      gamesByGame: {},
-    };
+    const norm = (s: string) =>
+      s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    // Cherche d'abord par ID exact, puis par nom normalisé (parties importées)
+    const found =
+      allStats.find((s) => s.playerId === profile.id) ??
+      allStats.find((s) => norm(s.playerName) === norm(profile.name)) ??
+      {
+        playerId: profile.id,
+        playerName: profile.name,
+        gamesPlayed: 0,
+        wins: 0,
+        winsByGame: {},
+        gamesByGame: {},
+      };
     setPlayerStats(found);
   };
 
