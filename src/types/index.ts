@@ -95,10 +95,15 @@ export interface SkullKingRoundScore {
   playerId: string;
   bid: number;          // pari (0..roundNumber)
   tricks: number;       // plis réalisés (0..roundNumber)
-  piratesCaptured: number;           // Pirates capturés par Skull King (+30 par pirate si pari réussi)
-  mermaidCapturedSkullKing: boolean; // Sirène a capturé Skull King (+50 si pari réussi)
-  colored14s: number;                // Cartes 14 couleur (vert/violet/jaune) dans les plis remportés (+10 chacune si pari réussi)
-  black14: boolean;                  // Carte 14 noire (atout) dans les plis remportés (+20 si pari réussi)
+  piratesCaptured: number;    // Pirates capturés (+30 par pirate si pari réussi, max 8)
+  mermaidsCaptured: number;   // Sirènes capturées (+20 par sirène si pari réussi, max 2)
+  skullKingCaptured: boolean; // Skull King capturé (+40 si pari réussi)
+  colored14s: number;         // Cartes 14 couleur (+10 chacune si pari réussi, max 3)
+  black14: boolean;           // Carte 14 noire (+20 si pari réussi)
+  // Extension
+  card8Captured?: number;     // Cartes 8 capturées (+5 par carte si pari réussi)
+  card7Captured?: number;     // Cartes 7 capturées (−5 par carte si pari réussi)
+  davyJonesCaptures?: number; // Créatures capturées par Davy Jones (+20 par capture, inconditionnel)
 }
 
 export interface SkullKingRound {
@@ -107,7 +112,11 @@ export interface SkullKingRound {
 }
 
 export function calcSkullKingRoundScore(score: SkullKingRoundScore, roundNumber: number): number {
-  const { bid, tricks, piratesCaptured, mermaidCapturedSkullKing, colored14s, black14 } = score;
+  const {
+    bid, tricks, piratesCaptured, mermaidsCaptured, skullKingCaptured, colored14s, black14,
+    card8Captured = 0, card7Captured = 0, davyJonesCaptures = 0,
+  } = score;
+
   if (bid === 0) {
     return tricks === 0 ? roundNumber * 10 : -(roundNumber * 10);
   }
@@ -115,9 +124,13 @@ export function calcSkullKingRoundScore(score: SkullKingRoundScore, roundNumber:
     return (
       bid * 20 +
       piratesCaptured * 30 +
-      (mermaidCapturedSkullKing ? 50 : 0) +
+      mermaidsCaptured * 20 +
+      (skullKingCaptured ? 40 : 0) +
       colored14s * 10 +
-      (black14 ? 20 : 0)
+      (black14 ? 20 : 0) +
+      card8Captured * 5 +
+      card7Captured * (-5) +
+      davyJonesCaptures * 20
     );
   }
   return -Math.abs(bid - tricks) * 10;
