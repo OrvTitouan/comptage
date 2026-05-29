@@ -117,23 +117,22 @@ export function calcSkullKingRoundScore(score: SkullKingRoundScore, roundNumber:
     card8Captured = 0, card7Captured = 0, davyJonesCaptures = 0,
   } = score;
 
-  if (bid === 0) {
-    return tricks === 0 ? roundNumber * 10 : -(roundNumber * 10);
-  }
-  if (bid === tricks) {
-    return (
-      bid * 20 +
-      piratesCaptured * 30 +
-      mermaidsCaptured * 20 +
-      (skullKingCaptured ? 40 : 0) +
-      colored14s * 10 +
-      (black14 ? 20 : 0) +
-      card8Captured * 5 +
-      card7Captured * (-5) +
-      davyJonesCaptures * 20
-    );
-  }
-  return -Math.abs(bid - tricks) * 10;
+  if (bid === 0 && tricks !== 0) return -(roundNumber * 10);
+  if (bid !== tricks) return -Math.abs(bid - tricks) * 10;
+
+  // Pari réussi (bid=0 tricks=0, ou bid=n tricks=n)
+  const base = bid === 0 ? roundNumber * 10 : bid * 20;
+  return (
+    base +
+    piratesCaptured * 30 +
+    mermaidsCaptured * 20 +
+    (skullKingCaptured ? 40 : 0) +
+    colored14s * 10 +
+    (black14 ? 20 : 0) +
+    card8Captured * 5 +
+    card7Captured * (-5) +
+    davyJonesCaptures * 20
+  );
 }
 
 // Tarot
@@ -260,5 +259,6 @@ export interface ActiveGameState {
   leaderScore: number | null;
   currentScores: PlayerScore[] | null;
   teams?: Team[];
+  gameState?: Record<string, any>;
 }
 

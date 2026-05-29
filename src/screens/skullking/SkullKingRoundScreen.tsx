@@ -20,6 +20,7 @@ interface Props {
   players: Player[];
   onValidate: (scores: SkullKingRoundScore[]) => void;
   onBack: () => void;
+  initialScores?: SkullKingRoundScore[];
 }
 
 function Stepper({
@@ -48,21 +49,25 @@ function Stepper({
   );
 }
 
-export default function SkullKingRoundScreen({ roundNumber, players, onValidate, onBack }: Props) {
-  const [phase, setPhase] = useState<'bids' | 'results'>('bids');
+export default function SkullKingRoundScreen({ roundNumber, players, onValidate, onBack, initialScores }: Props) {
+  const [phase, setPhase] = useState<'bids' | 'results'>(initialScores ? 'results' : 'bids');
 
-  const init = <T,>(val: T) => Object.fromEntries(players.map((p) => [p.id, val])) as Record<string, T>;
+  const fromScore = <T,>(getter: (s: SkullKingRoundScore) => T, fallback: T): Record<string, T> =>
+    Object.fromEntries(players.map((p) => {
+      const s = initialScores?.find((sc) => sc.playerId === p.id);
+      return [p.id, s !== undefined ? getter(s) : fallback];
+    }));
 
-  const [bids, setBids] = useState<Record<string, number>>(init(0));
-  const [tricks, setTricks] = useState<Record<string, number>>(init(0));
-  const [pirates, setPirates] = useState<Record<string, number>>(init(0));
-  const [mermaids, setMermaids] = useState<Record<string, number>>(init(0));
-  const [skullKingCaptured, setSkullKingCaptured] = useState<Record<string, boolean>>(init(false));
-  const [colored14s, setColored14s] = useState<Record<string, number>>(init(0));
-  const [black14, setBlack14] = useState<Record<string, boolean>>(init(false));
-  const [card8, setCard8] = useState<Record<string, number>>(init(0));
-  const [card7, setCard7] = useState<Record<string, number>>(init(0));
-  const [davyJones, setDavyJones] = useState<Record<string, number>>(init(0));
+  const [bids, setBids] = useState<Record<string, number>>(fromScore((s) => s.bid, 0));
+  const [tricks, setTricks] = useState<Record<string, number>>(fromScore((s) => s.tricks, 0));
+  const [pirates, setPirates] = useState<Record<string, number>>(fromScore((s) => s.piratesCaptured, 0));
+  const [mermaids, setMermaids] = useState<Record<string, number>>(fromScore((s) => s.mermaidsCaptured, 0));
+  const [skullKingCaptured, setSkullKingCaptured] = useState<Record<string, boolean>>(fromScore((s) => s.skullKingCaptured, false));
+  const [colored14s, setColored14s] = useState<Record<string, number>>(fromScore((s) => s.colored14s, 0));
+  const [black14, setBlack14] = useState<Record<string, boolean>>(fromScore((s) => s.black14, false));
+  const [card8, setCard8] = useState<Record<string, number>>(fromScore((s) => s.card8Captured ?? 0, 0));
+  const [card7, setCard7] = useState<Record<string, number>>(fromScore((s) => s.card7Captured ?? 0, 0));
+  const [davyJones, setDavyJones] = useState<Record<string, number>>(fromScore((s) => s.davyJonesCaptures ?? 0, 0));
 
   const buildScore = (p: Player): SkullKingRoundScore => ({
     playerId: p.id,
@@ -165,7 +170,7 @@ export default function SkullKingRoundScreen({ roundNumber, players, onValidate,
           const bid = bids[p.id];
           const trick = tricks[p.id];
           const score = getScore(p);
-          const pariReussi = bid > 0 && bid === trick;
+          const pariReussi = bid === trick;
           const scorePositive = score > 0;
           const scoreNeutral = score === 0;
           const hasConditionalBonus = pirates[p.id] > 0 || mermaids[p.id] > 0 || skullKingCaptured[p.id] || colored14s[p.id] > 0 || black14[p.id] || card8[p.id] > 0 || card7[p.id] > 0;

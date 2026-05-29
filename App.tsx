@@ -82,6 +82,10 @@ export default function App() {
     setNavScreen('Home');
   };
 
+  const updateGameState = (id: string, gameState: Record<string, any>) => {
+    setActiveGames((prev) => prev.map((g) => g.id === id ? { ...g, gameState } : g));
+  };
+
   const updateMeta = (id: string, scores: PlayerScore[]) => {
     setActiveGames((prev) => prev.map((g) => {
       if (g.id !== id) return g;
@@ -217,7 +221,7 @@ export default function App() {
     const meta = (scores: PlayerScore[]) => updateMeta(ag.id, scores);
 
     if (screenType === 'SkullKingGame') {
-      return <SkullKingGameScreen players={players} onEnd={end} onGoHome={goHome} onMeta={meta} />;
+      return <SkullKingGameScreen players={players} initialRounds={ag.gameState?.rounds} onEnd={end} onGoHome={goHome} onMeta={meta} onSaveState={(gs) => updateGameState(ag.id, gs)} />;
     }
     if (screenType === 'PapayooGame') {
       return <PapayooGameScreen players={players} totalRounds={totalRounds} onEnd={end} onGoHome={goHome} onMeta={meta} />;

@@ -28,9 +28,11 @@ const BLUE_DARK = '#1a5276';
 
 interface Props {
   players: Player[];
+  initialRounds?: SkullKingRound[];
   onEnd: () => void;
   onGoHome: () => void;
   onMeta: (scores: PlayerScore[]) => void;
+  onSaveState: (state: Record<string, any>) => void;
 }
 
 function getTotalScore(playerId: string, rounds: SkullKingRound[]): number {
@@ -47,9 +49,10 @@ function getRoundScore(playerId: string, round: SkullKingRound): number {
   return calcSkullKingRoundScore(score, round.roundNumber);
 }
 
-export default function SkullKingGameScreen({ players, onEnd, onGoHome, onMeta }: Props) {
-  const [rounds, setRounds] = useState<SkullKingRound[]>([]);
+export default function SkullKingGameScreen({ players, initialRounds, onEnd, onGoHome, onMeta, onSaveState }: Props) {
+  const [rounds, setRounds] = useState<SkullKingRound[]>(initialRounds ?? []);
   const [enteringRound, setEnteringRound] = useState(false);
+  const [editingScores, setEditingScores] = useState<SkullKingRoundScore[] | undefined>(undefined);
   const [winnerInfo, setWinnerInfo] = useState<{ name: string; total: number } | null>(null);
 
   const currentRound = rounds.length + 1;
@@ -60,14 +63,24 @@ export default function SkullKingGameScreen({ players, onEnd, onGoHome, onMeta }
     const updatedRounds = [...rounds, newRound];
     setRounds(updatedRounds);
     setEnteringRound(false);
-    // Mettre à jour les scores pour l'accueil et les stats
+    setEditingScores(undefined);
     onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: getTotalScore(p.id, updatedRounds) })));
+    onSaveState({ rounds: updatedRounds });
   };
 
-  const handleUndoRound = () => {
+  const handleEditLastRound = () => {
+    const lastRound = rounds[rounds.length - 1];
     const updatedRounds = rounds.slice(0, -1);
     setRounds(updatedRounds);
+    setEditingScores(lastRound.scores);
     onMeta(players.map((p) => ({ playerId: p.id, playerName: p.name, score: getTotalScore(p.id, updatedRounds) })));
+    onSaveState({ rounds: updatedRounds });
+    setEnteringRound(true);
+  };
+
+  const handleBackFromRound = () => {
+    setEnteringRound(false);
+    setEditingScores(undefined);
   };
 
   const handleEndGame = async () => {
@@ -143,7 +156,8 @@ export default function SkullKingGameScreen({ players, onEnd, onGoHome, onMeta }
         roundNumber={currentRound}
         players={players}
         onValidate={handleValidateRound}
-        onBack={() => setEnteringRound(false)}
+        onBack={handleBackFromRound}
+        initialScores={editingScores}
       />
     );
   }
@@ -273,8 +287,8 @@ export default function SkullKingGameScreen({ players, onEnd, onGoHome, onMeta }
 
       <View style={styles.footer}>
         {rounds.length > 0 && (
-          <TouchableOpacity style={styles.undoBtn} onPress={handleUndoRound} activeOpacity={0.8}>
-            <MaterialCommunityIcons name="undo" size={16} color="rgba(255,255,255,0.5)" />
+          <TouchableOpacity style={styles.undoBtn} onPress={handleEditLastRound} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="pencil-outline" size={16} color="rgba(255,255,255,0.5)" />
             <Text style={styles.undoBtnText}>Corriger la manche {rounds.length}</Text>
           </TouchableOpacity>
         )}
