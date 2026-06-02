@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Modal,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Player, SkullKingRoundScore, calcSkullKingRoundScore } from '../../types';
@@ -58,6 +59,8 @@ export default function SkullKingRoundScreen({ roundNumber, players, onValidate,
       return [p.id, s !== undefined ? getter(s) : fallback];
     }));
 
+  const [bonusModalPlayer, setBonusModalPlayer] = useState<string | null>(null);
+
   const [bids, setBids] = useState<Record<string, number>>(fromScore((s) => s.bid, 0));
   const [tricks, setTricks] = useState<Record<string, number>>(fromScore((s) => s.tricks, 0));
   const [pirates, setPirates] = useState<Record<string, number>>(fromScore((s) => s.piratesCaptured, 0));
@@ -84,6 +87,11 @@ export default function SkullKingRoundScreen({ roundNumber, players, onValidate,
   });
 
   const getScore = (p: Player) => calcSkullKingRoundScore(buildScore(p), roundNumber);
+
+  const hasAnyBonus = (pid: string) =>
+    pirates[pid] > 0 || mermaids[pid] > 0 || skullKingCaptured[pid] ||
+    colored14s[pid] > 0 || black14[pid] || card8[pid] > 0 ||
+    card7[pid] > 0 || davyJones[pid] > 0;
 
   // ── Phase 1 : Annonces ────────────────────────────────────────────────────
 
@@ -149,6 +157,9 @@ export default function SkullKingRoundScreen({ roundNumber, players, onValidate,
 
   // ── Phase 2 : Résultats ───────────────────────────────────────────────────
 
+  const modalP = players.find((p) => p.id === bonusModalPlayer) ?? null;
+  const modalPariReussi = modalP ? bids[modalP.id] === tricks[modalP.id] : false;
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
@@ -165,44 +176,42 @@ export default function SkullKingRoundScreen({ roundNumber, players, onValidate,
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
         {players.map((p) => {
           const bid = bids[p.id];
           const trick = tricks[p.id];
           const score = getScore(p);
-          const pariReussi = bid === trick;
           const scorePositive = score > 0;
           const scoreNeutral = score === 0;
-          const hasConditionalBonus = pirates[p.id] > 0 || mermaids[p.id] > 0 || skullKingCaptured[p.id] || colored14s[p.id] > 0 || black14[p.id] || card8[p.id] > 0 || card7[p.id] > 0;
+          const bonusSet = hasAnyBonus(p.id);
+          const pariReussi = bid === trick;
 
           return (
             <View key={p.id} style={styles.playerCard}>
-
-              {/* En-tête */}
+              {/* Ligne 1 : avatar · nom · annoncé · bouton bonus */}
               <View style={styles.cardHeader}>
-                <PlayerAvatar name={p.name} photoUri={p.photoUri} size={40} color={BLUE} />
+                <PlayerAvatar name={p.name} photoUri={p.photoUri} size={38} color={BLUE} />
                 <Text style={styles.playerName}>{p.name}</Text>
-                <View style={[
-                  styles.scoreBadge,
-                  scorePositive && styles.scoreBadgePos,
-                  !scorePositive && !scoreNeutral && styles.scoreBadgeNeg,
-                ]}>
-                  <Text style={styles.scoreBadgeText}>
-                    {score > 0 ? '+' : ''}{score} pts
-                  </Text>
+                <View style={styles.bidReadOnly}>
+                  <Text style={styles.bidReadOnlyLabel}>annoncé</Text>
+                  <Text style={styles.bidReadOnlyValue}>{bid}</Text>
                 </View>
+                <TouchableOpacity
+                  style={[styles.bonusBtn, bonusSet && pariReussi && styles.bonusBtnActive]}
+                  onPress={() => setBonusModalPlayer(p.id)}
+                  activeOpacity={0.75}
+                >
+                  <MaterialCommunityIcons
+                    name={bonusSet && pariReussi ? 'star' : 'star-outline'}
+                    size={20}
+                    color={bonusSet && pariReussi ? '#f39c12' : 'rgba(255,255,255,0.35)'}
+                  />
+                </TouchableOpacity>
               </View>
 
-              {/* Annoncé (lecture seule) + Réalisé */}
-              <View style={styles.bidsRow}>
+              {/* Ligne 2 : stepper plis + score */}
+              <View style={styles.tricksRow}>
                 <View style={styles.stepperGroup}>
-                  <Text style={styles.stepperLabel}>Annoncé</Text>
-                  <View style={styles.bidReadOnly}>
-                    <Text style={styles.bidReadOnlyValue}>{bid}</Text>
-                  </View>
-                </View>
-                <View style={styles.stepperGroup}>
-                  <Text style={styles.stepperLabel}>Réalisé</Text>
+                  <Text style={styles.stepperLabel}>Plis réalisés</Text>
                   <Stepper
                     value={trick}
                     min={0}
@@ -210,122 +219,12 @@ export default function SkullKingRoundScreen({ roundNumber, players, onValidate,
                     onChange={(v) => setTricks((prev) => ({ ...prev, [p.id]: v }))}
                   />
                 </View>
-              </View>
-
-              {/* Bonus conditionnels */}
-              <Text style={[styles.bonusSectionLabel, !pariReussi && styles.stepperLabelDisabled]}>
-                Bonus · pari réussi uniquement
-              </Text>
-
-              <View style={styles.bonusRow}>
-                <View style={styles.stepperGroup}>
-                  <Text style={[styles.stepperLabel, !pariReussi && styles.stepperLabelDisabled]}>
-                    Pirates +30
-                  </Text>
-                  <Stepper
-                    value={pirates[p.id]}
-                    min={0}
-                    max={8}
-                    disabled={!pariReussi}
-                    onChange={(v) => setPirates((prev) => ({ ...prev, [p.id]: v }))}
-                  />
-                </View>
-                <View style={styles.stepperGroup}>
-                  <Text style={[styles.stepperLabel, !pariReussi && styles.stepperLabelDisabled]}>
-                    🧜 Sirènes +20
-                  </Text>
-                  <Stepper
-                    value={mermaids[p.id]}
-                    min={0}
-                    max={2}
-                    disabled={!pariReussi}
-                    onChange={(v) => setMermaids((prev) => ({ ...prev, [p.id]: v }))}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.bonusRow}>
-                <TouchableOpacity
-                  style={[styles.toggle, skullKingCaptured[p.id] && pariReussi && styles.toggleActiveGreen, !pariReussi && styles.toggleDisabled]}
-                  onPress={() => setSkullKingCaptured((prev) => ({ ...prev, [p.id]: !prev[p.id] }))}
-                  disabled={!pariReussi}
-                >
-                  <Text style={styles.toggleIcon}>💀</Text>
-                  <Text style={[styles.toggleLabel, !pariReussi && styles.stepperLabelDisabled]}>
-                    Skull King +40
-                  </Text>
-                  {skullKingCaptured[p.id] && pariReussi && <MaterialCommunityIcons name="check" size={14} color="#2ecc71" />}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.toggle, black14[p.id] && pariReussi && styles.toggleActiveGold, !pariReussi && styles.toggleDisabled]}
-                  onPress={() => setBlack14((prev) => ({ ...prev, [p.id]: !prev[p.id] }))}
-                  disabled={!pariReussi}
-                >
-                  <Text style={styles.toggleIcon}>🏴‍☠️</Text>
-                  <Text style={[styles.toggleLabel, !pariReussi && styles.stepperLabelDisabled]}>
-                    14 noire +20
-                  </Text>
-                  {black14[p.id] && pariReussi && <MaterialCommunityIcons name="check" size={14} color="#f39c12" />}
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.bonusRow}>
-                <View style={styles.stepperGroup}>
-                  <Text style={[styles.stepperLabel, !pariReussi && styles.stepperLabelDisabled]}>
-                    14 couleur +10
-                  </Text>
-                  <Stepper
-                    value={colored14s[p.id]}
-                    min={0}
-                    max={3}
-                    disabled={!pariReussi}
-                    onChange={(v) => setColored14s((prev) => ({ ...prev, [p.id]: v }))}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.bonusRow}>
-                <View style={styles.stepperGroup}>
-                  <Text style={[styles.stepperLabel, !pariReussi && styles.stepperLabelDisabled]}>
-                    Carte 8 +5
-                  </Text>
-                  <Stepper
-                    value={card8[p.id]}
-                    min={0}
-                    max={4}
-                    disabled={!pariReussi}
-                    onChange={(v) => setCard8((prev) => ({ ...prev, [p.id]: v }))}
-                  />
-                </View>
-                <View style={styles.stepperGroup}>
-                  <Text style={[styles.stepperLabel, !pariReussi && styles.stepperLabelDisabled]}>
-                    Carte 7 −5
-                  </Text>
-                  <Stepper
-                    value={card7[p.id]}
-                    min={0}
-                    max={4}
-                    disabled={!pariReussi}
-                    onChange={(v) => setCard7((prev) => ({ ...prev, [p.id]: v }))}
-                  />
-                </View>
-              </View>
-
-              <Text style={[styles.bonusSectionLabel, !pariReussi && styles.stepperLabelDisabled]}>
-                Davy Jones +20/capture
-              </Text>
-              <View style={styles.bonusRow}>
-                <View style={styles.stepperGroup}>
-                  <Text style={[styles.stepperLabel, !pariReussi && styles.stepperLabelDisabled]}>
-                    🐋 Baleine · 🦑 Kraken · 🐟 Raie
-                  </Text>
-                  <Stepper
-                    value={davyJones[p.id]}
-                    min={0}
-                    max={3}
-                    disabled={!pariReussi}
-                    onChange={(v) => setDavyJones((prev) => ({ ...prev, [p.id]: v }))}
-                  />
+                <View style={[
+                  styles.scoreBadge,
+                  scorePositive && styles.scoreBadgePos,
+                  !scorePositive && !scoreNeutral && styles.scoreBadgeNeg,
+                ]}>
+                  <Text style={styles.scoreBadgeText}>{score > 0 ? '+' : ''}{score} pts</Text>
                 </View>
               </View>
             </View>
@@ -339,6 +238,103 @@ export default function SkullKingRoundScreen({ roundNumber, players, onValidate,
           <MaterialCommunityIcons name="check" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      {/* ── Modal bonus ───────────────────────────────────────────────────── */}
+      <Modal visible={bonusModalPlayer !== null} transparent animationType="slide" onRequestClose={() => setBonusModalPlayer(null)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setBonusModalPlayer(null)}>
+          <TouchableOpacity activeOpacity={1} style={styles.modalSheet} onPress={() => {}}>
+
+            {/* Poignée */}
+            <View style={styles.modalHandle} />
+
+            {modalP && (
+              <>
+                {/* En-tête modal */}
+                <View style={styles.modalHeader}>
+                  <PlayerAvatar name={modalP.name} photoUri={modalP.photoUri} size={32} color={BLUE} />
+                  <Text style={styles.modalTitle}>Bonus · {modalP.name}</Text>
+                  <TouchableOpacity onPress={() => setBonusModalPlayer(null)} style={styles.modalClose}>
+                    <MaterialCommunityIcons name="close" size={22} color="rgba(255,255,255,0.5)" />
+                  </TouchableOpacity>
+                </View>
+
+                {!modalPariReussi && (
+                  <Text style={styles.modalWarning}>Pari non réussi · tous les bonus sont désactivés</Text>
+                )}
+
+                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+
+                  <View style={styles.bonusRow}>
+                    <View style={styles.stepperGroup}>
+                      <Text style={[styles.stepperLabel, !modalPariReussi && styles.stepperLabelDisabled]}>Pirates +30</Text>
+                      <Stepper value={pirates[modalP.id]} min={0} max={8} disabled={!modalPariReussi}
+                        onChange={(v) => setPirates((prev) => ({ ...prev, [modalP.id]: v }))} />
+                    </View>
+                    <View style={styles.stepperGroup}>
+                      <Text style={[styles.stepperLabel, !modalPariReussi && styles.stepperLabelDisabled]}>🧜 Sirènes +20</Text>
+                      <Stepper value={mermaids[modalP.id]} min={0} max={2} disabled={!modalPariReussi}
+                        onChange={(v) => setMermaids((prev) => ({ ...prev, [modalP.id]: v }))} />
+                    </View>
+                  </View>
+
+                  <View style={styles.bonusRow}>
+                    <TouchableOpacity
+                      style={[styles.toggle, skullKingCaptured[modalP.id] && modalPariReussi && styles.toggleActiveGreen, !modalPariReussi && styles.toggleDisabled]}
+                      onPress={() => setSkullKingCaptured((prev) => ({ ...prev, [modalP.id]: !prev[modalP.id] }))}
+                      disabled={!modalPariReussi}
+                    >
+                      <Text style={styles.toggleIcon}>💀</Text>
+                      <Text style={[styles.toggleLabel, !modalPariReussi && styles.stepperLabelDisabled]}>Skull King +40</Text>
+                      {skullKingCaptured[modalP.id] && modalPariReussi && <MaterialCommunityIcons name="check" size={14} color="#2ecc71" />}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.toggle, black14[modalP.id] && modalPariReussi && styles.toggleActiveGold, !modalPariReussi && styles.toggleDisabled]}
+                      onPress={() => setBlack14((prev) => ({ ...prev, [modalP.id]: !prev[modalP.id] }))}
+                      disabled={!modalPariReussi}
+                    >
+                      <Text style={styles.toggleIcon}>🏴‍☠️</Text>
+                      <Text style={[styles.toggleLabel, !modalPariReussi && styles.stepperLabelDisabled]}>14 noire +20</Text>
+                      {black14[modalP.id] && modalPariReussi && <MaterialCommunityIcons name="check" size={14} color="#f39c12" />}
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.bonusRow}>
+                    <View style={styles.stepperGroup}>
+                      <Text style={[styles.stepperLabel, !modalPariReussi && styles.stepperLabelDisabled]}>14 couleur +10</Text>
+                      <Stepper value={colored14s[modalP.id]} min={0} max={3} disabled={!modalPariReussi}
+                        onChange={(v) => setColored14s((prev) => ({ ...prev, [modalP.id]: v }))} />
+                    </View>
+                    <View style={styles.stepperGroup}>
+                      <Text style={[styles.stepperLabel, !modalPariReussi && styles.stepperLabelDisabled]}>Carte 8 +5</Text>
+                      <Stepper value={card8[modalP.id]} min={0} max={4} disabled={!modalPariReussi}
+                        onChange={(v) => setCard8((prev) => ({ ...prev, [modalP.id]: v }))} />
+                    </View>
+                  </View>
+
+                  <View style={styles.bonusRow}>
+                    <View style={styles.stepperGroup}>
+                      <Text style={[styles.stepperLabel, !modalPariReussi && styles.stepperLabelDisabled]}>Carte 7 −5</Text>
+                      <Stepper value={card7[modalP.id]} min={0} max={4} disabled={!modalPariReussi}
+                        onChange={(v) => setCard7((prev) => ({ ...prev, [modalP.id]: v }))} />
+                    </View>
+                    <View style={styles.stepperGroup}>
+                      <Text style={[styles.stepperLabel, !modalPariReussi && styles.stepperLabelDisabled]}>🐋🦑🐟 Davy Jones +20</Text>
+                      <Stepper value={davyJones[modalP.id]} min={0} max={3} disabled={!modalPariReussi}
+                        onChange={(v) => setDavyJones((prev) => ({ ...prev, [modalP.id]: v }))} />
+                    </View>
+                  </View>
+
+                </ScrollView>
+
+                <TouchableOpacity style={styles.modalValidate} onPress={() => setBonusModalPlayer(null)} activeOpacity={0.85}>
+                  <MaterialCommunityIcons name="check" size={20} color="#fff" />
+                  <Text style={styles.modalValidateText}>Confirmer</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -391,24 +387,34 @@ const styles = StyleSheet.create({
   scoreBadgeNeg: { backgroundColor: 'rgba(231,76,60,0.2)' },
   scoreBadgeText: { fontSize: 14, fontWeight: '800', color: '#fff' },
 
-  // Bids row
-  bidsRow: { flexDirection: 'row', gap: 12 },
+  // Annoncé en lecture seule
+  bidReadOnly: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  bidReadOnlyLabel: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' },
+  bidReadOnlyValue: { fontSize: 22, fontWeight: '900', color: 'rgba(255,255,255,0.5)', lineHeight: 26 },
 
-  // Annoncé en lecture seule (phase résultats)
-  bidReadOnly: {
-    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 10,
-    height: 40, justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  // Bouton bonus
+  bonusBtn: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1.5, borderColor: 'transparent',
   },
-  bidReadOnlyValue: { fontSize: 20, fontWeight: '800', color: 'rgba(255,255,255,0.45)' },
+  bonusBtnActive: { borderColor: '#f39c12', backgroundColor: 'rgba(243,156,18,0.15)' },
 
-  // Bonus
-  bonusSectionLabel: {
-    fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.4)',
-    textTransform: 'uppercase', letterSpacing: 0.8,
-    marginTop: 2,
+  // Ligne plis réalisés
+  tricksRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+
+  // Score badge
+  scoreBadge: {
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center',
   },
-  bonusRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  scoreBadgePos: { backgroundColor: 'rgba(46,204,113,0.2)' },
+  scoreBadgeNeg: { backgroundColor: 'rgba(231,76,60,0.2)' },
+  scoreBadgeText: { fontSize: 15, fontWeight: '800', color: '#fff' },
+
+  // Bonus dans la modal
+  bonusRow: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 14 },
   stepperGroup: { flex: 1, gap: 6 },
   stepperLabel: {
     fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.5)',
@@ -443,11 +449,6 @@ const styles = StyleSheet.create({
   toggleIcon: { fontSize: 18 },
   toggleLabel: { fontSize: 12, fontWeight: '700', color: '#fff' },
 
-  bonusNote: {
-    fontSize: 11, color: 'rgba(255,165,0,0.6)',
-    textAlign: 'center', fontStyle: 'italic',
-  },
-
   // Footer
   footer: { padding: 16, paddingBottom: 28 },
   validateButton: {
@@ -455,4 +456,41 @@ const styles = StyleSheet.create({
     gap: 10, backgroundColor: BLUE_DARK, borderRadius: 16, padding: 18,
   },
   validateButtonText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+
+  // Modal
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#16213e', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingBottom: 32, maxHeight: '80%',
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center', marginTop: 12, marginBottom: 4,
+  },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)',
+  },
+  modalTitle: { flex: 1, fontSize: 17, fontWeight: '800', color: '#fff' },
+  modalClose: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  modalWarning: {
+    fontSize: 12, color: '#e67e22', textAlign: 'center',
+    paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: 'rgba(230,126,34,0.1)',
+  },
+  modalBody: { paddingHorizontal: 20, paddingTop: 16 },
+  modalValidate: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: 8, backgroundColor: BLUE_DARK, borderRadius: 14, padding: 16,
+    marginHorizontal: 20, marginTop: 8,
+  },
+  modalValidateText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 });
