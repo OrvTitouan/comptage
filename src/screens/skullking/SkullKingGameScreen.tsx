@@ -114,9 +114,10 @@ export default function SkullKingGameScreen({ players, initialRounds, onEnd, onG
 
   // Écran de victoire (remplace l'Alert, fonctionne sur web et mobile)
   if (winnerInfo) {
-    const finalRanking = [...players].sort(
-      (a, b) => getTotalScore(b.id, rounds) - getTotalScore(a.id, rounds)
-    );
+    const winnerTopScore = Math.max(...players.map((p) => getTotalScore(p.id, rounds)));
+    const getWinnerRank = (pid: string) =>
+      players.filter((p) => getTotalScore(p.id, rounds) > getTotalScore(pid, rounds)).length + 1;
+
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
@@ -127,12 +128,14 @@ export default function SkullKingGameScreen({ players, initialRounds, onEnd, onG
             {winnerInfo.name} remporte la victoire avec {winnerInfo.total > 0 ? '+' : ''}{winnerInfo.total} pts
           </Text>
           <View style={styles.winnerRanking}>
-            {finalRanking.map((p, i) => {
+            {players.map((p) => {
               const total = getTotalScore(p.id, rounds);
+              const rank = getWinnerRank(p.id);
+              const isWinner = total === winnerTopScore;
               return (
-                <View key={p.id} style={[styles.winnerRow, i === 0 && styles.winnerRowFirst]}>
-                  <Text style={styles.winnerRank}>#{i + 1}</Text>
-                  <PlayerAvatar name={p.name} photoUri={p.photoUri} size={40} color={i === 0 ? BLUE : 'rgba(255,255,255,0.15)'} />
+                <View key={p.id} style={[styles.winnerRow, isWinner && styles.winnerRowFirst]}>
+                  <Text style={styles.winnerRank}>#{rank}</Text>
+                  <PlayerAvatar name={p.name} photoUri={p.photoUri} size={40} color={isWinner ? BLUE : 'rgba(255,255,255,0.15)'} />
                   <Text style={styles.winnerName}>{p.name}</Text>
                   <Text style={[styles.winnerScore, total < 0 && styles.scoreNeg]}>
                     {total > 0 ? '+' : ''}{total} pts
@@ -162,11 +165,13 @@ export default function SkullKingGameScreen({ players, initialRounds, onEnd, onG
     );
   }
 
-  const sortedPlayers = [...players].sort(
-    (a, b) => getTotalScore(b.id, rounds) - getTotalScore(a.id, rounds)
-  );
-
   const progress = (rounds.length / TOTAL_ROUNDS) * 100;
+
+  const getPlayerRank = (playerId: string) => {
+    const myScore = getTotalScore(playerId, rounds);
+    return players.filter((p) => getTotalScore(p.id, rounds) > myScore).length + 1;
+  };
+  const topScore = rounds.length > 0 ? Math.max(...players.map((p) => getTotalScore(p.id, rounds))) : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -192,14 +197,15 @@ export default function SkullKingGameScreen({ players, initialRounds, onEnd, onG
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* Classement */}
-        <Text style={styles.sectionLabel}>Classement</Text>
-        {sortedPlayers.map((player, index) => {
+        {/* Scores */}
+        <Text style={styles.sectionLabel}>Scores</Text>
+        {players.map((player) => {
           const total = getTotalScore(player.id, rounds);
-          const isFirst = index === 0 && rounds.length > 0;
+          const rank = getPlayerRank(player.id);
+          const isFirst = topScore !== null && total === topScore;
           return (
             <View key={player.id} style={[styles.playerRow, isFirst && styles.playerRowFirst]}>
-              <Text style={styles.rank}>#{index + 1}</Text>
+              <Text style={styles.rank}>#{rank}</Text>
               <PlayerAvatar name={player.name} photoUri={player.photoUri} size={40} color={isFirst ? BLUE : 'rgba(255,255,255,0.15)'} />
               <Text style={styles.playerName}>{player.name}</Text>
               <Text style={[styles.score, isFirst && styles.scoreFirst, total < 0 && styles.scoreNeg]}>
